@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>中级会计师备考打卡</title>
+  <style>
+    :root {
+      --acc: #4f6ef2;
+      --fin: #e8a838;
+      --eco: #3dba8c;
+      --rest: #b0b0b0;
+      --bg: #f4f6fb;
+      --card: #fff;
+      --radius: 14px;
+      --shadow: 0 2px 12px rgba(0,0,0,.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); font-family: "PingFang SC","Helvetica Neue",Arial,sans-serif; color: #333; }
+
+    /* ── NAV ── */
+    .nav { display:flex; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:100; }
+    .nav-item { flex:1; padding:14px 0; text-align:center; font-size:13px; color:#999; cursor:pointer; border-bottom:3px solid transparent; transition:.2s; }
+    .nav-item.active { color:var(--acc); border-color:var(--acc); font-weight:600; }
+
+    /* ── PAGES ── */
+    .page { display:none; padding:16px; max-width:520px; margin:0 auto; }
+    .page.active { display:block; }
+
+    /* ── COUNTDOWN ── */
+    .countdown-banner {
+      background: linear-gradient(135deg,#4f6ef2,#7c3aed);
+      color:#fff; border-radius:var(--radius); padding:20px 24px;
+      display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
+    }
+    .cd-label { font-size:13px; opacity:.85; margin-bottom:4px; }
+    .cd-num { font-size:36px; font-weight:700; }
+    .cd-sub { font-size:12px; opacity:.7; margin-top:2px; }
+    .cd-right { text-align:right; }
+    .cd-date { font-size:12px; opacity:.75; }
+    .cd-exam { font-size:15px; font-weight:600; margin-top:2px; }
+
+    /* ── CARD ── */
+    .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:14px; }
+    .card-title { font-size:15px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+
+    /* ── TODAY TASKS ── */
+    .task-list { display:flex; flex-direction:column; gap:10px; }
+    .task-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:10px; background:#f8f9ff; cursor:pointer; transition:.15s; }
+    .task-item:hover { background:#eef0ff; }
+    .task-item.done { opacity:.55; }
+    .task-item.done .task-name { text-decoration:line-through; }
+    .task-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+    .dot-acc { background:var(--acc); }
+    .dot-fin { background:var(--fin); }
+    .dot-eco { background:var(--eco); }
+    .dot-rest { background:var(--rest); }
+    .task-name { flex:1; font-size:14px; }
+    .task-min { font-size:12px; color:#999; }
+    .task-check { width:22px; height:22px; border:2px solid #ccc; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .task-item.done .task-check { background:var(--acc); border-color:var(--acc); }
+    .task-check svg { display:none; }
+    .task-item.done .task-check svg { display:block; }
+
+    .punch-btn {
+      width:100%; padding:14px; background:var(--acc); color:#fff;
+      border:none; border-radius:10px; font-size:15px; font-weight:600;
+      cursor:pointer; margin-top:14px; transition:.15s;
+    }
+    .punch-btn:hover { background:#3a58d8; }
+    .punch-btn:disabled { background:#b0b9e8; cursor:default; }
+
+    /* ── PROGRESS RING ── */
+    .progress-row { display:flex; gap:10px; }
+    .progress-col { flex:1; text-align:center; }
+    .ring-wrap { position:relative; width:80px; height:80px; margin:0 auto 6px; }
+    .ring-wrap svg { transform:rotate(-90deg); }
+    .ring-bg { fill:none; stroke:#eee; stroke-width:8; }
+    .ring-fg { fill:none; stroke-width:8; stroke-linecap:round; transition:stroke-dashoffset .6s ease; }
+    .ring-text { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    .ring-pct { font-size:16px; font-weight:700; }
+    .ring-label { font-size:11px; color:#999; margin-top:2px; }
+    .subj-name { font-size:12px; color:#666; font-weight:500; }
+
+    /* ── CALENDAR ── */
+    .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .cal-nav { background:none; border:none; font-size:18px; cursor:pointer; color:#666; padding:4px 8px; }
+    .cal-title { font-size:15px; font-weight:600; }
+    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+    .cal-day-head { text-align:center; font-size:11px; color:#999; padding:4px 0; }
+    .cal-cell { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; font-size:12px; cursor:default; }
+    .cal-cell.other { color:#ccc; }
+    .cal-cell.today { border:2px solid var(--acc); font-weight:700; color:var(--acc); }
+    .cal-cell.punched-acc { background:var(--acc); color:#fff; }
+    .cal-cell.punched-fin { background:var(--fin); color:#fff; }
+    .cal-cell.punched-eco { background:var(--eco); color:#fff; }
+    .cal-cell.punched-mix { background:linear-gradient(135deg,var(--acc) 50%,var(--fin) 50%); color:#fff; }
+    .cal-cell.rest-day { background:#f0f0f0; color:#bbb; }
+    .cal-cell .dot-row { display:flex; gap:2px; margin-top:2px; }
+    .cal-cell .mini-dot { width:5px; height:5px; border-radius:50%; }
+
+    /* ── NOTES ── */
+    .notes-tabs { display:flex; gap:8px; margin-bottom:12px; }
+    .note-tab { padding:6px 14px; border-radius:20px; border:1px solid #ddd; background:#fff; font-size:13px; cursor:pointer; }
+    .note-tab.active { background:var(--acc); color:#fff; border-color:var(--acc); }
+    .note-form { display:flex; flex-direction:column; gap:10px; }
+    .note-form input, .note-form textarea, .note-form select {
+      border:1px solid #e0e0e0; border-radius:8px; padding:10px 12px;
+      font-size:14px; font-family:inherit; outline:none; background:#fafafa;
+    }
+    .note-form textarea { resize:vertical; min-height:80px; }
+    .note-form button {
+      padding:10px; background:var(--acc); color:#fff; border:none;
+      border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
+    }
+    .note-list { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+    .note-card { background:#f8f9ff; border-radius:10px; padding:12px 14px; border-left:4px solid var(--acc); }
+    .note-card.fin { border-color:var(--fin); }
+    .note-card.eco { border-color:var(--eco); }
+    .note-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .note-subj { font-size:12px; font-weight:600; color:var(--acc); }
+    .note-card.fin .note-subj { color:var(--fin); }
+    .note-card.eco .note-subj { color:var(--eco); }
+    .note-date { font-size:11px; color:#bbb; }
+    .note-content { font-size:13px; line-height:1.6; }
+    .note-del { font-size:12px; color:#ccc; cursor:pointer; margin-left:8px; }
+    .note-del:hover { color:#f55; }
+    .empty-tip { text-align:center; color:#bbb; font-size:13px; padding:24px 0; }
+
+    /* ── STATS ── */
+    .stat-row { display:flex; gap:10px; margin-bottom:10px; }
+    .stat-box { flex:1; background:#f8f9ff; border-radius:10px; padding:14px; text-align:center; }
+    .stat-num { font-size:24px; font-weight:700; color:var(--acc); }
+    .stat-lbl { font-size:12px; color:#999; margin-top:4px; }
+    .heatmap { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+    .hm-cell { aspect-ratio:1; border-radius:3px; background:#eee; }
+    .hm-cell.l1 { background:#c7d4ff; }
+    .hm-cell.l2 { background:#7c8eff; }
+    .hm-cell.l3 { background:var(--acc); }
+
+    /* ── TOAST ── */
+    .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:#333; color:#fff; padding:10px 20px; border-radius:24px; font-size:14px;
+      opacity:0; transition:.3s; pointer-events:none; white-space:nowrap; z-index:999; }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ── REMIND MODAL ── */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:200; }
+    .modal-overlay.show { display:flex; }
+    .modal { background:#fff; border-radius:var(--radius); padding:24px; width:90%; max-width:380px; }
+    .modal h3 { font-size:16px; margin-bottom:16px; }
+    .modal p { font-size:13px; color:#666; line-height:1.7; margin-bottom:6px; }
+    .modal-btn { margin-top:16px; padding:10px 24px; background:var(--acc); color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-item active" onclick="switchPage('home')">🏠 今日</div>
+  <div class="nav-item" onclick="switchPage('calendar')">📅 日历</div>
+  <div class="nav-item" onclick="switchPage('notes')">📝 笔记</div>
+  <div class="nav-item" onclick="switchPage('stats')">📊 统计</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- REMIND MODAL -->
+<div class="modal-overlay" id="remindModal">
+  <div class="modal">
+    <h3>📢 近期重要提醒</h3>
+    <div id="remindContent"></div>
+    <button class="modal-btn" onclick="document.getElementById('remindModal').classList.remove('show')">知道了</button>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: 今日 ══════════ -->
+<div class="page active" id="page-home">
+
+  <!-- 倒计时 -->
+  <div class="countdown-banner">
+    <div>
+      <div class="cd-label">距离考试还有</div>
+      <div class="cd-num" id="cdDays">--</div>
+      <div class="cd-sub">天</div>
+    </div>
+    <div class="cd-right">
+      <div class="cd-date">📅 报名截止</div>
+      <div class="cd-exam" id="cdSignup">计算中...</div>
+      <div style="height:8px"></div>
+      <div class="cd-date">🎯 考试日期</div>
+      <div class="cd-exam">2026年9月5–6日</div>
+    </div>
+  </div>
+
+  <!-- 今日任务 -->
+  <div class="card">
+    <div class="card-title">📋 今日任务 <span id="taskDate" style="font-size:12px;color:#999;font-weight:400;margin-left:auto"></span></div>
+    <div class="task-list" id="taskList"></div>
+    <button class="punch-btn" id="punchBtn" onclick="doPunch()">✅ 完成打卡</button>
+  </div>
+
+  <!-- 进度环 -->
+  <div class="card">
+    <div class="card-title">📈 复习进度</div>
+    <div class="progress-row" id="progressRow"></div>
+  </div>
+
+</div>
+
+<!-- ══════════ PAGE: 日历 ══════════ -->
+<div class="page" id="page-calendar">
+  <div class="card">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button class="cal-nav" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🗓️ 重要节点</div>
+    <div id="milestones"></div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: 笔记 ══════════ -->
+<div class="page" id="page-notes">
+  <!-- 错题记录 -->
+  <div class="card">
+    <div class="card-title">❌ 错题记录</div>
+    <div class="note-form">
+      <select id="errSubj">
+        <option value="acc">📘 会计</option>
+        <option value="fin">📙 财管</option>
+        <option value="eco">📗 经济法</option>
+      </select>
+      <input id="errChapter" placeholder="章节（如：第三章 金融工具）" />
+      <textarea id="errContent" placeholder="错题内容 / 考点描述"></textarea>
+      <button onclick="addNote('err')">记录错题</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 错题列表</div>
+    <div class="notes-tabs">
+      <div class="note-tab active" onclick="filterNotes('err','all',this)">全部</div>
+      <div class="note-tab" onclick="filterNotes('err','acc',this)">会计</div>
+      <div class="note-tab" onclick="filterNotes('err','fin',this)">财管</div>
+      <div class="note-tab" onclick="filterNotes('err','eco',this)">经济法</div>
+    </div>
+    <div class="note-list" id="errList"></div>
+  </div>
+
+  <!-- 复习笔记 -->
+  <div class="card">
+    <div class="card-title">📝 复习笔记</div>
+    <div class="note-form">
+      <select id="memoSubj">
+        <option value="acc">📘 会计</option>
+        <option value="fin">📙 财管</option>
+        <option value="eco">📗 经济法</option>
+      </select>
+      <input id="memoTitle" placeholder="标题（如：长期股权投资要点）" />
+      <textarea id="memoContent" placeholder="笔记内容..."></textarea>
+      <button onclick="addNote('memo')">保存笔记</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📚 笔记列表</div>
+    <div class="notes-tabs">
+      <div class="note-tab active" onclick="filterNotes('memo','all',this)">全部</div>
+      <div class="note-tab" onclick="filterNotes('memo','acc',this)">会计</div>
+      <div class="note-tab" onclick="filterNotes('memo','fin',this)">财管</div>
+      <div class="note-tab" onclick="filterNotes('memo','eco',this)">经济法</div>
+    </div>
+    <div class="note-list" id="memoList"></div>
+  </div>
+</div>
+
+<!-- ══════════ PAGE: 统计 ══════════ -->
+<div class="page" id="page-stats">
+  <div class="card">
+    <div class="card-title">🔥 打卡统计</div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">累计打卡天数</div></div>
+      <div class="stat-box"><div class="stat-num" id="statStreak">0</div><div class="stat-lbl">当前连续天数</div></div>
+      <div class="stat-box"><div class="stat-num" id="statRate">0%</div><div class="stat-lbl">本月打卡率</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📈 近30天热力图</div>
+    <div class="heatmap" id="heatmap"></div>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:10px;font-size:11px;color:#999;">
+      <span>少</span>
+      <div style="width:12px;height:12px;border-radius:2px;background:#eee"></div>
+      <div style="width:12px;height:12px;border-radius:2px;background:#c7d4ff"></div>
+      <div style="width:12px;height:12px;border-radius:2px;background:#7c8eff"></div>
+      <div style="width:12px;height:12px;border-radius:2px;background:var(--acc)"></div>
+      <span>多</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">📊 科目学习时长（小时）</div>
+    <div id="barChart"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════
+//  DATA STORE
+// ══════════════════════════════════
+const STORE_KEY = 'cpa_checker_v1';
+function loadData() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
+}
+function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
+
+// ── 学习计划生成 ──
+// 阶段划分
+const PHASES = [
+  { start: '2026-05-07', end: '2026-05-31', name: '第一阶段', focus: '会计查漏补缺 + 财管推进' },
+  { start: '2026-06-01', end: '2026-06-30', name: '第二阶段', focus: '财管收尾 + 经济法刷题 + 会计刷题' },
+  { start: '2026-07-01', end: '2026-08-10', name: '第三阶段', focus: '三科历年真题轮转强化' },
+  { start: '2026-08-11', end: '2026-09-04', name: '第四阶段', focus: '全真模拟 + 错题冲刺' },
+];
+
+function getPhase(dateStr) {
+  for (const p of PHASES) {
+    if (dateStr >= p.start && dateStr <= p.end) return p;
+  }
+  return null;
+}
+
+// 根据日期生成今日任务
+function getTodayTasks(dateStr) {
+  const d = new Date(dateStr);
+  const dow = d.getDay(); // 0=Sun
+  if (dow === 0) return [{ subj: 'rest', name: '🌿 休息日', min: 0 }];
+
+  const ph = getPhase(dateStr);
+  if (!ph) return [{ subj: 'rest', name: '考试/考后 休整', min: 0 }];
+
+  // 根据阶段和星期分配科目
+  const tasks = [];
+  const p = PHASES.indexOf(ph);
+
+  if (p === 0) {
+    // 阶段1：周1/3/5会计，周2/4/6财管
+    if ([1,3,5].includes(dow)) {
+      tasks.push({ subj:'acc', name:'📘 会计 — 查漏补缺（听课/刷题）', min:60 });
+      tasks.push({ subj:'acc', name:'📘 会计 — 错题回顾', min:30 });
+      tasks.push({ subj:'fin', name:'📙 财管 — 巩固已学章节', min:30 });
+    } else {
+      tasks.push({ subj:'fin', name:'📙 财管 — 推进新章节', min:70 });
+      tasks.push({ subj:'fin', name:'📙 财管 — 章节练习', min:50 });
+    }
+  } else if (p === 1) {
+    // 阶段2：周1/2财管，周3/4经济法，周5/6会计刷题
+    if ([1,2].includes(dow)) {
+      tasks.push({ subj:'fin', name:'📙 财管 — 最后几章收尾', min:70 });
+      tasks.push({ subj:'fin', name:'📙 财管 — 章节真题', min:50 });
+    } else if ([3,4].includes(dow)) {
+      tasks.push({ subj:'eco', name:'📗 经济法 — 刷题（按章节）', min:60 });
+      tasks.push({ subj:'eco', name:'📗 经济法 — 错题精析', min:60 });
+    } else {
+      tasks.push({ subj:'acc', name:'📘 会计 — 专项刷题', min:70 });
+      tasks.push({ subj:'eco', name:'📗 经济法 — 巩固练习', min:50 });
+    }
+  } else if (p === 2) {
+    // 阶段3：三科轮转，每天2科
+    const rot = [['acc','fin'],['fin','eco'],['eco','acc'],['acc','eco'],['fin','acc'],['eco','fin']];
+    const pair = rot[(d.getDate()-1) % 6];
+    const map = { acc:'📘 会计', fin:'📙 财管', eco:'📗 经济法' };
+    tasks.push({ subj:pair[0], name:`${map[pair[0]]} — 历年真题`, min:60 });
+    tasks.push({ subj:pair[1], name:`${map[pair[1]]} — 历年真题 + 错题`, min:60 });
+  } else {
+    // 阶段4：全真模拟+冲刺
+    if ([1,3,5].includes(dow)) {
+      tasks.push({ subj:'acc', name:'📘 会计 — 全真模拟卷', min:90 });
+      tasks.push({ subj:'acc', name:'📘 会计 — 对答案复盘', min:30 });
+    } else {
+      tasks.push({ subj:'fin', name:'📙 财管 — 模拟+复盘', min:60 });
+      tasks.push({ subj:'eco', name:'📗 经济法 — 模拟+复盘', min:60 });
+    }
+  }
+  return tasks;
+}
+
+// ══════════════════════════════════
+//  COUNTDOWN
+// ══════════════════════════════════
+function updateCountdown() {
+  const exam = new Date('2026-09-05');
+  const signup = new Date('2026-07-02');
+  const now = new Date();
+  const diffExam = Math.ceil((exam - now) / 86400000);
+  const diffSign = Math.ceil((signup - now) / 86400000);
+  document.getElementById('cdDays').textContent = diffExam > 0 ? diffExam : 0;
+  document.getElementById('cdSignup').textContent =
+    diffSign > 0 ? `还有 ${diffSign} 天` : '已截止';
+}
+
+// ══════════════════════════════════
+//  TODAY TASKS
+// ══════════════════════════════════
+let todayKey = '';
+function renderToday() {
+  const d = new Date();
+  todayKey = d.toISOString().slice(0,10);
+  document.getElementById('taskDate').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日 ${['日','一','二','三','四','五','六'][d.getDay()]}`;
+
+  const data = loadData();
+  const punch = data.punches || {};
+  const todayPunch = punch[todayKey] || { done: [], tasks: [] };
+
+  const tasks = getTodayTasks(todayKey);
+  if (!todayPunch.tasks || todayPunch.tasks.length === 0) todayPunch.tasks = tasks;
+
+  const list = document.getElementById('taskList');
+  list.innerHTML = '';
+  (todayPunch.tasks.length ? todayPunch.tasks : tasks).forEach((t, i) => {
+    const done = (todayPunch.done || []).includes(i);
+    const div = document.createElement('div');
+    div.className = 'task-item' + (done ? ' done' : '');
+    div.innerHTML = `
+      <div class="task-dot dot-${t.subj}"></div>
+      <div class="task-name">${t.name}</div>
+      ${t.min ? `<div class="task-min">${t.min}min</div>` : ''}
+      <div class="task-check">
+        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+          <path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>`;
+    div.onclick = () => toggleTask(i);
+    list.appendChild(div);
+  });
+
+  const punchBtn = document.getElementById('punchBtn');
+  if (todayPunch.punched) {
+    punchBtn.textContent = '🎉 今日已打卡！';
+    punchBtn.disabled = true;
+  } else {
+    punchBtn.disabled = false;
+    punchBtn.textContent = '✅ 完成打卡';
+  }
+}
+
+function toggleTask(i) {
+  const data = loadData();
+  const punch = data.punches || {};
+  if (!punch[todayKey]) punch[todayKey] = { done: [], tasks: getTodayTasks(todayKey), punched: false };
+  const done = punch[todayKey].done;
+  const idx = done.indexOf(i);
+  if (idx >= 0) done.splice(idx, 1);
+  else done.push(i);
+  data.punches = punch;
+  saveData(data);
+  renderToday();
+}
+
+function doPunch() {
+  const data = loadData();
+  const punch = data.punches || {};
+  if (!punch[todayKey]) punch[todayKey] = { done: [], tasks: getTodayTasks(todayKey), punched: false };
+  punch[todayKey].punched = true;
+  // calc minutes by subject
+  const tasks = punch[todayKey].tasks || [];
+  const mins = { acc:0, fin:0, eco:0 };
+  tasks.forEach(t => { if (t.subj in mins) mins[t.subj] += t.min||0; });
+  punch[todayKey].mins = mins;
+  data.punches = punch;
+  saveData(data);
+  renderToday();
+  renderProgress();
+  showToast('🎉 打卡成功！继续加油！');
+}
+
+// ══════════════════════════════════
+//  PROGRESS RINGS
+// ══════════════════════════════════
+// 估算各科总章节/进度
+const SUBJECT_PROGRESS = {
+  acc: { name:'会计', color:'var(--acc)', total:22, done:10, label:'已听课' },
+  fin: { name:'财管', color:'var(--fin)', total:16, done:6,  label:'已学章节' },
+  eco: { name:'经济法', color:'var(--eco)', total:12, done:0, label:'刷题进度' },
+};
+
+function renderProgress() {
+  const data = loadData();
+  const prog = data.progress || {};
+  const row = document.getElementById('progressRow');
+  row.innerHTML = '';
+  Object.entries(SUBJECT_PROGRESS).forEach(([k,s]) => {
+    const p = prog[k] || { done: s.done };
+    const pct = Math.min(100, Math.round(p.done / s.total * 100));
+    const r = 34; const circ = 2 * Math.PI * r;
+    const offset = circ * (1 - pct/100);
+    const col = document.createElement('div');
+    col.className = 'progress-col';
+    col.innerHTML = `
+      <div class="ring-wrap" onclick="editProgress('${k}','${s.name}',${s.total},${p.done})">
+        <svg width="80" height="80" viewBox="0 0 80 80">
+          <circle class="ring-bg" cx="40" cy="40" r="${r}"/>
+          <circle class="ring-fg" cx="40" cy="40" r="${r}"
+            stroke="${s.color}"
+            stroke-dasharray="${circ}"
+            stroke-dashoffset="${offset}"/>
+        </svg>
+        <div class="ring-text">
+          <div class="ring-pct" style="color:${s.color}">${pct}%</div>
+          <div class="ring-label">${p.done}/${s.total}</div>
+        </div>
+      </div>
+      <div class="subj-name">${s.name}</div>`;
+    row.appendChild(col);
+  });
+}
+
+function editProgress(key, name, total, cur) {
+  const v = prompt(`${name} 当前进度（共${total}章/节）\n已完成多少？`, cur);
+  if (v === null) return;
+  const n = parseInt(v);
+  if (isNaN(n) || n < 0 || n > total) { showToast('请输入有效数字'); return; }
+  const data = loadData();
+  if (!data.progress) data.progress = {};
+  data.progress[key] = { done: n };
+  saveData(data);
+  renderProgress();
+  showToast(`✅ ${name} 进度已更新`);
+}
+
+// ══════════════════════════════════
+//  CALENDAR
+// ══════════════════════════════════
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderCalendar() {
+  const data = loadData();
+  const punch = data.punches || {};
+  const today = new Date().toISOString().slice(0,10);
+
+  const months = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+  document.getElementById('calTitle').textContent = `${calYear}年${months[calMonth]}月`;
+
+  const first = new Date(calYear, calMonth, 1).getDay();
+  const days = new Date(calYear, calMonth+1, 0).getDate();
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  ['日','一','二','三','四','五','六'].forEach(h => {
+    const d = document.createElement('div');
+    d.className = 'cal-day-head'; d.textContent = h; grid.appendChild(d);
+  });
+  for (let i=0; i<first; i++) {
+    const d = document.createElement('div'); d.className='cal-cell other'; grid.appendChild(d);
+  }
+  for (let d=1; d<=days; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    const dow = new Date(dateStr).getDay();
+    let cls = 'cal-cell';
+    if (dateStr === today) cls += ' today';
+    else if (dow === 0) cls += ' rest-day';
+
+    const p = punch[dateStr];
+    let dotHtml = '';
+    if (p && p.punched) {
+      const mins = p.mins || {};
+      const hasAcc = mins.acc > 0, hasFin = mins.fin > 0, hasEco = mins.eco > 0;
+      dotHtml = '<div class="dot-row">';
+      if (hasAcc) dotHtml += '<div class="mini-dot" style="background:var(--acc)"></div>';
+      if (hasFin) dotHtml += '<div class="mini-dot" style="background:var(--fin)"></div>';
+      if (hasEco) dotHtml += '<div class="mini-dot" style="background:var(--eco)"></div>';
+      dotHtml += '</div>';
+      cls += ' punched-acc'; // 有打卡就着色
+    }
+    cell.className = cls;
+    cell.innerHTML = `<span>${d}</span>${dotHtml}`;
+    grid.appendChild(cell);
+  }
+}
+
+function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function renderMilestones() {
+  const nodes = [
+    { date:'2026-06-12', label:'📋 报名开始', color:'#4f6ef2' },
+    { date:'2026-07-02', label:'⏰ 报名截止', color:'#e8503a' },
+    { date:'2026-09-05', label:'🎯 考试第一天', color:'#3dba8c' },
+    { date:'2026-09-06', label:'🎯 考试第二天', color:'#3dba8c' },
+  ];
+  const today = new Date().toISOString().slice(0,10);
+  const el = document.getElementById('milestones');
+  el.innerHTML = nodes.map(n => {
+    const diff = Math.ceil((new Date(n.date) - new Date(today)) / 86400000);
+    const tag = diff < 0 ? '已过' : diff === 0 ? '今天！' : `还有${diff}天`;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+      <div style="width:10px;height:10px;border-radius:50%;background:${n.color};flex-shrink:0"></div>
+      <div style="flex:1;font-size:13px">${n.label}</div>
+      <div style="font-size:12px;color:#999">${n.date}</div>
+      <div style="font-size:12px;color:${n.color};font-weight:600;min-width:52px;text-align:right">${tag}</div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════
+//  NOTES
+// ══════════════════════════════════
+let noteFilters = { err:'all', memo:'all' };
+
+function addNote(type) {
+  const subj = document.getElementById(type==='err'?'errSubj':'memoSubj').value;
+  const chapter = type==='err' ? document.getElementById('errChapter').value : document.getElementById('memoTitle').value;
+  const content = document.getElementById(type==='err'?'errContent':'memoContent').value;
+  if (!content.trim()) { showToast('请填写内容'); return; }
+  const data = loadData();
+  if (!data.notes) data.notes = { err:[], memo:[] };
+  data.notes[type].unshift({
+    id: Date.now(), subj, chapter: chapter.trim(),
+    content: content.trim(),
+    date: new Date().toISOString().slice(0,10)
+  });
+  saveData(data);
+  document.getElementById(type==='err'?'errContent':'memoContent').value = '';
+  if (type==='err') document.getElementById('errChapter').value='';
+  else document.getElementById('memoTitle').value='';
+  renderNotes(type);
+  showToast(type==='err'?'❌ 错题已记录':'📝 笔记已保存');
+}
+
+function delNote(type, id) {
+  const data = loadData();
+  data.notes[type] = (data.notes[type]||[]).filter(n => n.id !== id);
+  saveData(data);
+  renderNotes(type);
+}
+
+function filterNotes(type, subj, el) {
+  noteFilters[type] = subj;
+  el.closest('.notes-tabs').querySelectorAll('.note-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderNotes(type);
+}
+
+function renderNotes(type) {
+  const data = loadData();
+  const notes = (data.notes||{})[type]||[];
+  const f = noteFilters[type]||'all';
+  const filtered = f==='all' ? notes : notes.filter(n=>n.subj===f);
+  const el = document.getElementById(type+'List');
+  if (!filtered.length) { el.innerHTML = '<div class="empty-tip">暂无记录</div>'; return; }
+  const colorMap = { acc:'var(--acc)', fin:'var(--fin)', eco:'var(--eco)' };
+  const nameMap = { acc:'会计', fin:'财管', eco:'经济法' };
+  el.innerHTML = filtered.map(n => `
+    <div class="note-card ${n.subj}">
+      <div class="note-head">
+        <span class="note-subj">${nameMap[n.subj]}${n.chapter ? ' · '+n.chapter : ''}</span>
+        <span style="display:flex;align-items:center">
+          <span class="note-date">${n.date}</span>
+          <span class="note-del" onclick="delNote('${type}',${n.id})">✕</span>
+        </span>
+      </div>
+      <div class="note-content">${n.content.replace(/\n/g,'<br>')}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════
+//  STATS
+// ══════════════════════════════════
+function renderStats() {
+  const data = loadData();
+  const punch = data.punches || {};
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0,10);
+
+  // 累计
+  const total = Object.values(punch).filter(p=>p.punched).length;
+  document.getElementById('statTotal').textContent = total;
+
+  // 连续
+  let streak = 0, d = new Date(today);
+  while (true) {
+    const s = d.toISOString().slice(0,10);
+    if (punch[s] && punch[s].punched) { streak++; d.setDate(d.getDate()-1); }
+    else if (s === todayStr) { d.setDate(d.getDate()-1); } // today not punched yet
+    else break;
+    if (streak > 365) break;
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  // 本月打卡率
+  const ym = todayStr.slice(0,7);
+  let monthDays = 0, monthPunch = 0;
+  for (let d2=1; d2<=today.getDate(); d2++) {
+    const s = `${ym}-${String(d2).padStart(2,'0')}`;
+    if (new Date(s).getDay() !== 0) {
+      monthDays++;
+      if (punch[s] && punch[s].punched) monthPunch++;
+    }
+  }
+  document.getElementById('statRate').textContent =
+    monthDays ? Math.round(monthPunch/monthDays*100)+'%' : '0%';
+
+  // Heatmap 近30天
+  const hm = document.getElementById('heatmap');
+  hm.innerHTML = '';
+  for (let i=29; i>=0; i--) {
+    const dd = new Date(today); dd.setDate(dd.getDate()-i);
+    const s = dd.toISOString().slice(0,10);
+    const p = punch[s];
+    let cls = 'hm-cell';
+    if (p && p.punched) {
+      const m = (p.mins||{}); const total = (m.acc||0)+(m.fin||0)+(m.eco||0);
+      if (total >= 100) cls += ' l3';
+      else if (total >= 60) cls += ' l2';
+      else cls += ' l1';
+    }
+    const cell = document.createElement('div');
+    cell.className = cls;
+    cell.title = s + (p && p.punched ? ` ✅ 已打卡` : '');
+    hm.appendChild(cell);
+  }
+
+  // Bar chart 各科累计时长
+  const subjMins = { acc:0, fin:0, eco:0 };
+  Object.values(punch).forEach(p => {
+    if (p.mins) Object.keys(subjMins).forEach(k => subjMins[k] += (p.mins[k]||0));
+  });
+  const maxH = Math.max(...Object.values(subjMins), 60);
+  const colors = { acc:'var(--acc)', fin:'var(--fin)', eco:'var(--eco)' };
+  const names = { acc:'会计', fin:'财管', eco:'经济法' };
+  document.getElementById('barChart').innerHTML = `
+    <div style="display:flex;gap:16px;align-items:flex-end;height:120px;padding:0 8px">
+      ${Object.entries(subjMins).map(([k,v]) => `
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="font-size:11px;color:#666">${Math.round(v/60)}h</div>
+          <div style="width:100%;background:${colors[k]};border-radius:6px 6px 0 0;
+            height:${Math.round(v/maxH*90)+10}px;transition:.6s"></div>
+          <div style="font-size:12px;color:#666">${names[k]}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════
+//  REMINDERS
+// ══════════════════════════════════
+function checkReminders() {
+  const today = new Date().toISOString().slice(0,10);
+  const alerts = [
+    { date:'2026-06-12', msg:'📋 <b>今日起可以报名中级会计师考试！</b><br>请登录财政部官网完成报名。' },
+    { date:'2026-06-25', msg:'⚠️ <b>报名截止还剩7天</b>，请确认是否已完成报名和缴费。' },
+    { date:'2026-07-02', msg:'🚨 <b>今天是报名最后截止日！</b><br>18:00前完成缴费，逾期无法补报。' },
+    { date:'2026-09-04', msg:'🎯 <b>明天就是考试了！</b><br>提前准备好准考证、身份证，早睡早起，加油！' },
+  ];
+  const hit = alerts.find(a => a.date === today);
+  if (!hit) return;
+  document.getElementById('remindContent').innerHTML = `<p>${hit.msg}</p>`;
+  document.getElementById('remindModal').classList.add('show');
+}
+
+// ══════════════════════════════════
+//  NAV + TOAST
+// ══════════════════════════════════
+function switchPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  const idx = ['home','calendar','notes','stats'].indexOf(id);
+  document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  if (id==='calendar') { renderCalendar(); renderMilestones(); }
+  if (id==='notes') { renderNotes('err'); renderNotes('memo'); }
+  if (id==='stats') renderStats();
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ══════════════════════════════════
+//  INIT
+// ══════════════════════════════════
+updateCountdown();
+renderToday();
+renderProgress();
+checkReminders();
+</script>
+</body>
+</html>
