@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>中级会计师备考打卡</title>
+  <!-- CloudBase JS SDK -->
+  <script src="https://unpkg.com/@cloudbase/js-sdk@latest/dist/cloudbase.full.js"></script>
   <style>
     :root {
       --acc: #4f6ef2;
@@ -17,6 +19,22 @@
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); font-family: "PingFang SC","Helvetica Neue",Arial,sans-serif; color: #333; }
+
+    /* ── SYNC BAR ── */
+    .sync-bar {
+      display:flex; align-items:center; justify-content:center; gap:6px;
+      padding:6px 12px; font-size:12px; color:#999;
+      background:#fff; border-bottom:1px solid #f0f0f0;
+      transition:.3s;
+    }
+    .sync-bar.syncing { color:var(--acc); }
+    .sync-bar.synced { color:var(--eco); }
+    .sync-bar.error { color:#e8503a; }
+    .sync-dot { width:6px; height:6px; border-radius:50%; background:#ccc; }
+    .sync-bar.syncing .sync-dot { background:var(--acc); animation:pulse 1s infinite; }
+    .sync-bar.synced .sync-dot { background:var(--eco); }
+    .sync-bar.error .sync-dot { background:#e8503a; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
     /* ── NAV ── */
     .nav { display:flex; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:100; }
@@ -151,9 +169,33 @@
     .modal h3 { font-size:16px; margin-bottom:16px; }
     .modal p { font-size:13px; color:#666; line-height:1.7; margin-bottom:6px; }
     .modal-btn { margin-top:16px; padding:10px 24px; background:var(--acc); color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; }
+
+    /* ── LOADING ── */
+    .loading-overlay {
+      position:fixed; inset:0; background:var(--bg); display:flex;
+      flex-direction:column; align-items:center; justify-content:center; z-index:999;
+      transition:opacity .4s;
+    }
+    .loading-overlay.hide { opacity:0; pointer-events:none; }
+    .loading-spinner { width:36px; height:36px; border:3px solid #e0e0e0; border-top-color:var(--acc);
+      border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .loading-text { margin-top:12px; font-size:14px; color:#999; }
   </style>
 </head>
 <body>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text" id="loadingText">正在连接云服务...</div>
+</div>
+
+<!-- SYNC BAR -->
+<div class="sync-bar" id="syncBar">
+  <div class="sync-dot"></div>
+  <span id="syncText">准备中...</span>
+</div>
 
 <!-- NAV -->
 <div class="nav">
@@ -308,16 +350,174 @@
 
 <script>
 // ══════════════════════════════════
-//  DATA STORE
+//  CLOUDBASE CONFIG
 // ══════════════════════════════════
+const ENV_ID = 'wawa-study-checkin-d6cj8a95d1779';
+let app = null;
+let db = null;
+let auth = null;
+let currentUser = null;
+const LOCAL_USER_KEY = 'cb_study_uid';
 const STORE_KEY = 'cpa_checker_v1';
+
+// ══════════════════════════════════
+//  CLOUDBASE INIT & AUTH
+// ══════════════════════════════════
+function setSyncStatus(status, text) {
+  const bar = document.getElementById('syncBar');
+  const txt = document.getElementById('syncText');
+  bar.className = 'sync-bar ' + status;
+  txt.textContent = text;
+}
+
+async function initCloudBase() {
+  setSyncStatus('syncing', '正在初始化...');
+  try {
+    app = cloudbase.init({ env: ENV_ID, region: 'ap-guangzhou' });
+    auth = app.auth();
+    db = app.database();
+
+    // Try anonymous login
+    setSyncStatus('syncing', '正在登录...');
+    const loginRes = await auth.anonymousAuthProvider().signIn();
+    currentUser = loginRes;
+
+    // Save user ID for future reference
+    const uid = loginRes.uid || loginRes.user_id || '';
+    localStorage.setItem(LOCAL_USER_KEY, uid);
+
+    setSyncStatus('synced', '☁️ 已连接云同步');
+    console.log('CloudBase 登录成功, uid:', uid);
+
+    // Load data from cloud
+    await loadFromCloud();
+    return true;
+  } catch (e) {
+    console.error('CloudBase 初始化失败:', e);
+    setSyncStatus('error', '⚠️ 云同步不可用，使用本地存储');
+    return false;
+  }
+}
+
+// ══════════════════════════════════
+//  CLOUD DATA LAYER
+// ══════════════════════════════════
+async function loadFromCloud() {
+  setSyncStatus('syncing', '正在同步数据...');
+  try {
+    // Load user doc from 'users' collection (keyed by anonymous uid)
+    const uid = localStorage.getItem(LOCAL_USER_KEY);
+    if (!uid) { setSyncStatus('synced', '☁️ 已连接'); return; }
+
+    // Load punches
+    const punchRes = await db.collection('checkins').where({ _uid: uid }).orderBy('date', 'asc').limit(1000).get();
+    // Load mistakes
+    const errRes = await db.collection('mistakes').where({ _uid: uid }).orderBy('_id', 'desc').limit(1000).get();
+    // Load notes
+    const memoRes = await db.collection('notes').where({ _uid: uid }).orderBy('_id', 'desc').limit(1000).get();
+
+    // Merge into local data
+    const data = loadData();
+
+    // Merge punches
+    if (punchRes.data && punchRes.data.length > 0) {
+      if (!data.punches) data.punches = {};
+      punchRes.data.forEach(r => { data.punches[r.date] = r.data; });
+    }
+
+    // Merge notes
+    if (!data.notes) data.notes = { err: [], memo: [] };
+    if (errRes.data && errRes.data.length > 0) {
+      data.notes.err = errRes.data.map(r => ({ id: r._id, subj: r.subj, chapter: r.chapter, content: r.content, date: r.date }));
+    }
+    if (memoRes.data && memoRes.data.length > 0) {
+      data.notes.memo = memoRes.data.map(r => ({ id: r._id, subj: r.subj, chapter: r.chapter, content: r.content, date: r.date }));
+    }
+
+    saveData(data);
+    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
+  } catch (e) {
+    console.error('数据同步失败:', e);
+    setSyncStatus('error', '⚠️ 同步失败，使用本地数据');
+  }
+}
+
+async function savePunchToCloud(dateStr, punchData) {
+  if (!db) return;
+  try {
+    const uid = localStorage.getItem(LOCAL_USER_KEY);
+    if (!uid) return;
+
+    await db.collection('checkins').where({ _uid: uid, date: dateStr }).remove();
+    await db.collection('checkins').add({
+      data: { _uid: uid, date: dateStr, data: punchData }
+    });
+    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
+  } catch (e) {
+    console.error('打卡同步失败:', e);
+    setSyncStatus('error', '⚠️ 同步失败');
+  }
+}
+
+async function saveProgressToCloud(progData) {
+  if (!db) return;
+  try {
+    const uid = localStorage.getItem(LOCAL_USER_KEY);
+    if (!uid) return;
+    // Store progress in checkins as a special record
+    await db.collection('checkins').where({ _uid: uid, date: '__progress__' }).remove();
+    await db.collection('checkins').add({
+      data: { _uid: uid, date: '__progress__', data: progData }
+    });
+    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
+  } catch (e) {
+    console.error('进度同步失败:', e);
+  }
+}
+
+async function addNoteToCloud(type, noteObj) {
+  if (!db) return;
+  try {
+    const uid = localStorage.getItem(LOCAL_USER_KEY);
+    if (!uid) return;
+    const coll = type === 'err' ? 'mistakes' : 'notes';
+    await db.collection(coll).add({
+      data: { _uid: uid, subj: noteObj.subj, chapter: noteObj.chapter, content: noteObj.content, date: noteObj.date }
+    });
+    // Get the real _id back
+    const res = await db.collection(coll).where({ _uid: uid, date: noteObj.date, content: noteObj.content }).orderBy('_id', 'desc').limit(1).get();
+    if (res.data && res.data.length > 0) {
+      return res.data[0]._id;
+    }
+    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
+  } catch (e) {
+    console.error('笔记同步失败:', e);
+    setSyncStatus('error', '⚠️ 同步失败');
+  }
+  return null;
+}
+
+async function deleteNoteToCloud(type, id) {
+  if (!db || !id) return;
+  try {
+    const coll = type === 'err' ? 'mistakes' : 'notes';
+    await db.collection(coll).doc(id).remove();
+    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
+  } catch (e) {
+    console.error('删除同步失败:', e);
+    setSyncStatus('error', '⚠️ 同步失败');
+  }
+}
+
+// ══════════════════════════════════
+//  LOCAL DATA STORE (fallback + cache)
+// ══════════════════════════════════
 function loadData() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
 }
 function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
 
 // ── 学习计划生成 ──
-// 阶段划分
 const PHASES = [
   { start: '2026-05-07', end: '2026-05-31', name: '第一阶段', focus: '会计查漏补缺 + 财管推进' },
   { start: '2026-06-01', end: '2026-06-30', name: '第二阶段', focus: '财管收尾 + 经济法刷题 + 会计刷题' },
@@ -332,21 +532,16 @@ function getPhase(dateStr) {
   return null;
 }
 
-// 根据日期生成今日任务
 function getTodayTasks(dateStr) {
   const d = new Date(dateStr);
-  const dow = d.getDay(); // 0=Sun
+  const dow = d.getDay();
   if (dow === 0) return [{ subj: 'rest', name: '🌿 休息日', min: 0 }];
-
   const ph = getPhase(dateStr);
   if (!ph) return [{ subj: 'rest', name: '考试/考后 休整', min: 0 }];
-
-  // 根据阶段和星期分配科目
   const tasks = [];
   const p = PHASES.indexOf(ph);
 
   if (p === 0) {
-    // 阶段1：周1/3/5会计，周2/4/6财管
     if ([1,3,5].includes(dow)) {
       tasks.push({ subj:'acc', name:'📘 会计 — 查漏补缺（听课/刷题）', min:60 });
       tasks.push({ subj:'acc', name:'📘 会计 — 错题回顾', min:30 });
@@ -356,7 +551,6 @@ function getTodayTasks(dateStr) {
       tasks.push({ subj:'fin', name:'📙 财管 — 章节练习', min:50 });
     }
   } else if (p === 1) {
-    // 阶段2：周1/2财管，周3/4经济法，周5/6会计刷题
     if ([1,2].includes(dow)) {
       tasks.push({ subj:'fin', name:'📙 财管 — 最后几章收尾', min:70 });
       tasks.push({ subj:'fin', name:'📙 财管 — 章节真题', min:50 });
@@ -368,14 +562,12 @@ function getTodayTasks(dateStr) {
       tasks.push({ subj:'eco', name:'📗 经济法 — 巩固练习', min:50 });
     }
   } else if (p === 2) {
-    // 阶段3：三科轮转，每天2科
     const rot = [['acc','fin'],['fin','eco'],['eco','acc'],['acc','eco'],['fin','acc'],['eco','fin']];
     const pair = rot[(d.getDate()-1) % 6];
     const map = { acc:'📘 会计', fin:'📙 财管', eco:'📗 经济法' };
     tasks.push({ subj:pair[0], name:`${map[pair[0]]} — 历年真题`, min:60 });
     tasks.push({ subj:pair[1], name:`${map[pair[1]]} — 历年真题 + 错题`, min:60 });
   } else {
-    // 阶段4：全真模拟+冲刺
     if ([1,3,5].includes(dow)) {
       tasks.push({ subj:'acc', name:'📘 会计 — 全真模拟卷', min:90 });
       tasks.push({ subj:'acc', name:'📘 会计 — 对答案复盘', min:30 });
@@ -457,34 +649,34 @@ function toggleTask(i) {
   else done.push(i);
   data.punches = punch;
   saveData(data);
+  savePunchToCloud(todayKey, punch[todayKey]);
   renderToday();
 }
 
-function doPunch() {
+async function doPunch() {
   const data = loadData();
   const punch = data.punches || {};
   if (!punch[todayKey]) punch[todayKey] = { done: [], tasks: getTodayTasks(todayKey), punched: false };
   punch[todayKey].punched = true;
-  // calc minutes by subject
   const tasks = punch[todayKey].tasks || [];
   const mins = { acc:0, fin:0, eco:0 };
   tasks.forEach(t => { if (t.subj in mins) mins[t.subj] += t.min||0; });
   punch[todayKey].mins = mins;
   data.punches = punch;
   saveData(data);
+  await savePunchToCloud(todayKey, punch[todayKey]);
   renderToday();
   renderProgress();
-  showToast('🎉 打卡成功！继续加油！');
+  showToast('🎉 打卡成功！已同步到云端');
 }
 
 // ══════════════════════════════════
 //  PROGRESS RINGS
 // ══════════════════════════════════
-// 估算各科总章节/进度
 const SUBJECT_PROGRESS = {
   acc: { name:'会计', color:'var(--acc)', total:22, done:10, label:'已听课' },
   fin: { name:'财管', color:'var(--fin)', total:16, done:6,  label:'已学章节' },
-  eco: { name:'经济法', color:'var(--eco)', total:12, done:0, label:'刷题进度' },
+  eco: { name:'经济法', color:'var(--eco)', total:12, done:0,  label:'刷题进度' },
 };
 
 function renderProgress() {
@@ -518,7 +710,7 @@ function renderProgress() {
   });
 }
 
-function editProgress(key, name, total, cur) {
+async function editProgress(key, name, total, cur) {
   const v = prompt(`${name} 当前进度（共${total}章/节）\n已完成多少？`, cur);
   if (v === null) return;
   const n = parseInt(v);
@@ -527,8 +719,9 @@ function editProgress(key, name, total, cur) {
   if (!data.progress) data.progress = {};
   data.progress[key] = { done: n };
   saveData(data);
+  await saveProgressToCloud(data.progress);
   renderProgress();
-  showToast(`✅ ${name} 进度已更新`);
+  showToast(`✅ ${name} 进度已同步`);
 }
 
 // ══════════════════════════════════
@@ -574,7 +767,7 @@ function renderCalendar() {
       if (hasFin) dotHtml += '<div class="mini-dot" style="background:var(--fin)"></div>';
       if (hasEco) dotHtml += '<div class="mini-dot" style="background:var(--eco)"></div>';
       dotHtml += '</div>';
-      cls += ' punched-acc'; // 有打卡就着色
+      cls += ' punched-acc';
     }
     cell.className = cls;
     cell.innerHTML = `<span>${d}</span>${dotHtml}`;
@@ -611,31 +804,40 @@ function renderMilestones() {
 // ══════════════════════════════════
 let noteFilters = { err:'all', memo:'all' };
 
-function addNote(type) {
+async function addNote(type) {
   const subj = document.getElementById(type==='err'?'errSubj':'memoSubj').value;
   const chapter = type==='err' ? document.getElementById('errChapter').value : document.getElementById('memoTitle').value;
   const content = document.getElementById(type==='err'?'errContent':'memoContent').value;
   if (!content.trim()) { showToast('请填写内容'); return; }
+
+  const noteObj = {
+    subj, chapter: chapter.trim(), content: content.trim(),
+    date: new Date().toISOString().slice(0,10)
+  };
+
+  const cloudId = await addNoteToCloud(type, noteObj);
+  if (cloudId) noteObj.id = cloudId;
+  else noteObj.id = Date.now();
+
   const data = loadData();
   if (!data.notes) data.notes = { err:[], memo:[] };
-  data.notes[type].unshift({
-    id: Date.now(), subj, chapter: chapter.trim(),
-    content: content.trim(),
-    date: new Date().toISOString().slice(0,10)
-  });
+  data.notes[type].unshift(noteObj);
   saveData(data);
+
   document.getElementById(type==='err'?'errContent':'memoContent').value = '';
   if (type==='err') document.getElementById('errChapter').value='';
   else document.getElementById('memoTitle').value='';
   renderNotes(type);
-  showToast(type==='err'?'❌ 错题已记录':'📝 笔记已保存');
+  showToast(type==='err'?'❌ 错题已同步到云端':'📝 笔记已同步到云端');
 }
 
-function delNote(type, id) {
+async function delNote(type, id) {
+  await deleteNoteToCloud(type, id);
   const data = loadData();
   data.notes[type] = (data.notes[type]||[]).filter(n => n.id !== id);
   saveData(data);
   renderNotes(type);
+  showToast('🗑️ 已删除并同步');
 }
 
 function filterNotes(type, subj, el) {
@@ -652,7 +854,6 @@ function renderNotes(type) {
   const filtered = f==='all' ? notes : notes.filter(n=>n.subj===f);
   const el = document.getElementById(type+'List');
   if (!filtered.length) { el.innerHTML = '<div class="empty-tip">暂无记录</div>'; return; }
-  const colorMap = { acc:'var(--acc)', fin:'var(--fin)', eco:'var(--eco)' };
   const nameMap = { acc:'会计', fin:'财管', eco:'经济法' };
   el.innerHTML = filtered.map(n => `
     <div class="note-card ${n.subj}">
@@ -660,7 +861,7 @@ function renderNotes(type) {
         <span class="note-subj">${nameMap[n.subj]}${n.chapter ? ' · '+n.chapter : ''}</span>
         <span style="display:flex;align-items:center">
           <span class="note-date">${n.date}</span>
-          <span class="note-del" onclick="delNote('${type}',${n.id})">✕</span>
+          <span class="note-del" onclick="delNote('${type}','${n.id}')">✕</span>
         </span>
       </div>
       <div class="note-content">${n.content.replace(/\n/g,'<br>')}</div>
@@ -676,22 +877,19 @@ function renderStats() {
   const today = new Date();
   const todayStr = today.toISOString().slice(0,10);
 
-  // 累计
   const total = Object.values(punch).filter(p=>p.punched).length;
   document.getElementById('statTotal').textContent = total;
 
-  // 连续
   let streak = 0, d = new Date(today);
   while (true) {
     const s = d.toISOString().slice(0,10);
     if (punch[s] && punch[s].punched) { streak++; d.setDate(d.getDate()-1); }
-    else if (s === todayStr) { d.setDate(d.getDate()-1); } // today not punched yet
+    else if (s === todayStr) { d.setDate(d.getDate()-1); }
     else break;
     if (streak > 365) break;
   }
   document.getElementById('statStreak').textContent = streak;
 
-  // 本月打卡率
   const ym = todayStr.slice(0,7);
   let monthDays = 0, monthPunch = 0;
   for (let d2=1; d2<=today.getDate(); d2++) {
@@ -704,7 +902,6 @@ function renderStats() {
   document.getElementById('statRate').textContent =
     monthDays ? Math.round(monthPunch/monthDays*100)+'%' : '0%';
 
-  // Heatmap 近30天
   const hm = document.getElementById('heatmap');
   hm.innerHTML = '';
   for (let i=29; i>=0; i--) {
@@ -713,18 +910,17 @@ function renderStats() {
     const p = punch[s];
     let cls = 'hm-cell';
     if (p && p.punched) {
-      const m = (p.mins||{}); const total = (m.acc||0)+(m.fin||0)+(m.eco||0);
-      if (total >= 100) cls += ' l3';
-      else if (total >= 60) cls += ' l2';
+      const m = (p.mins||{}); const totalM = (m.acc||0)+(m.fin||0)+(m.eco||0);
+      if (totalM >= 100) cls += ' l3';
+      else if (totalM >= 60) cls += ' l2';
       else cls += ' l1';
     }
     const cell = document.createElement('div');
     cell.className = cls;
-    cell.title = s + (p && p.punched ? ` ✅ 已打卡` : '');
+    cell.title = s + (p && p.punched ? ' ✅ 已打卡' : '');
     hm.appendChild(cell);
   }
 
-  // Bar chart 各科累计时长
   const subjMins = { acc:0, fin:0, eco:0 };
   Object.values(punch).forEach(p => {
     if (p.mins) Object.keys(subjMins).forEach(k => subjMins[k] += (p.mins[k]||0));
@@ -786,10 +982,20 @@ function showToast(msg) {
 // ══════════════════════════════════
 //  INIT
 // ══════════════════════════════════
-updateCountdown();
-renderToday();
-renderProgress();
-checkReminders();
+(async function main() {
+  const cloudOk = await initCloudBase();
+
+  updateCountdown();
+  renderToday();
+  renderProgress();
+  checkReminders();
+
+  // Hide loading
+  document.getElementById('loadingOverlay').classList.add('hide');
+  setTimeout(() => {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  }, 500);
+})();
 </script>
 </body>
 </html>
