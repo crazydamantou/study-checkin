@@ -1,1001 +1,576 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>中级会计师备考打卡</title>
-  <!-- CloudBase JS SDK -->
-  <script src="https://unpkg.com/@cloudbase/js-sdk@latest/dist/cloudbase.full.js"></script>
-  <style>
-    :root {
-      --acc: #4f6ef2;
-      --fin: #e8a838;
-      --eco: #3dba8c;
-      --rest: #b0b0b0;
-      --bg: #f4f6fb;
-      --card: #fff;
-      --radius: 14px;
-      --shadow: 0 2px 12px rgba(0,0,0,.08);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); font-family: "PingFang SC","Helvetica Neue",Arial,sans-serif; color: #333; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>中级会计师备考打卡</title>
+<style>
+:root{--acc:#4f6ef2;--fin:#e8a838;--eco:#3dba8c;--rest:#b0b0b0;--bg:#f4f6fb;--card:#fff;--r:14px;--sh:0 2px 12px rgba(0,0,0,.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:"PingFang SC","Helvetica Neue",Arial,sans-serif;color:#333;max-width:540px;margin:0 auto}
 
-    /* ── SYNC BAR ── */
-    .sync-bar {
-      display:flex; align-items:center; justify-content:center; gap:6px;
-      padding:6px 12px; font-size:12px; color:#999;
-      background:#fff; border-bottom:1px solid #f0f0f0;
-      transition:.3s;
-    }
-    .sync-bar.syncing { color:var(--acc); }
-    .sync-bar.synced { color:var(--eco); }
-    .sync-bar.error { color:#e8503a; }
-    .sync-dot { width:6px; height:6px; border-radius:50%; background:#ccc; }
-    .sync-bar.syncing .sync-dot { background:var(--acc); animation:pulse 1s infinite; }
-    .sync-bar.synced .sync-dot { background:var(--eco); }
-    .sync-bar.error .sync-dot { background:#e8503a; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.nav{display:flex;background:#fff;border-bottom:1px solid #eee;position:sticky;top:0;z-index:100}
+.nav-item{flex:1;padding:13px 0;text-align:center;font-size:13px;color:#999;cursor:pointer;border-bottom:3px solid transparent;transition:.2s}
+.nav-item.active{color:var(--acc);border-color:var(--acc);font-weight:600}
 
-    /* ── NAV ── */
-    .nav { display:flex; background:#fff; border-bottom:1px solid #eee; position:sticky; top:0; z-index:100; }
-    .nav-item { flex:1; padding:14px 0; text-align:center; font-size:13px; color:#999; cursor:pointer; border-bottom:3px solid transparent; transition:.2s; }
-    .nav-item.active { color:var(--acc); border-color:var(--acc); font-weight:600; }
+.page{display:none;padding:16px}.page.active{display:block}
 
-    /* ── PAGES ── */
-    .page { display:none; padding:16px; max-width:520px; margin:0 auto; }
-    .page.active { display:block; }
+.countdown{background:linear-gradient(135deg,#4f6ef2,#7c3aed);color:#fff;border-radius:var(--r);padding:20px 24px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.cd-label{font-size:13px;opacity:.85;margin-bottom:4px}.cd-num{font-size:36px;font-weight:700}
+.cd-sub{font-size:12px;opacity:.7;margin-top:2px}.cd-right{text-align:right}
+.cd-date{font-size:12px;opacity:.75}.cd-exam{font-size:15px;font-weight:600;margin-top:2px}
 
-    /* ── COUNTDOWN ── */
-    .countdown-banner {
-      background: linear-gradient(135deg,#4f6ef2,#7c3aed);
-      color:#fff; border-radius:var(--radius); padding:20px 24px;
-      display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
-    }
-    .cd-label { font-size:13px; opacity:.85; margin-bottom:4px; }
-    .cd-num { font-size:36px; font-weight:700; }
-    .cd-sub { font-size:12px; opacity:.7; margin-top:2px; }
-    .cd-right { text-align:right; }
-    .cd-date { font-size:12px; opacity:.75; }
-    .cd-exam { font-size:15px; font-weight:600; margin-top:2px; }
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px;margin-bottom:14px}
+.card-title{font-size:15px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 
-    /* ── CARD ── */
-    .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; margin-bottom:14px; }
-    .card-title { font-size:15px; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:6px; }
+.task-list{display:flex;flex-direction:column;gap:10px}
+.task-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:#f8f9ff;cursor:pointer;transition:.15s}
+.task-item:hover{background:#eef0ff}.task-item.done{opacity:.55}
+.task-item.done .task-name{text-decoration:line-through}
+.task-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.dot-acc{background:var(--acc)}.dot-fin{background:var(--fin)}.dot-eco{background:var(--eco)}.dot-rest{background:var(--rest)}
+.task-name{flex:1;font-size:14px}.task-tag{font-size:11px;padding:2px 8px;border-radius:10px;white-space:nowrap}
+.tag-focus{background:#e8eaff;color:var(--acc)}.tag-scatter{background:#e0e8f5;color:#3a5fad}
+.task-check{width:22px;height:22px;border:2px solid #ccc;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.task-item.done .task-check{background:var(--acc);border-color:var(--acc)}
+.task-check svg{display:none}.task-item.done .task-check svg{display:block}
 
-    /* ── TODAY TASKS ── */
-    .task-list { display:flex; flex-direction:column; gap:10px; }
-    .task-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:10px; background:#f8f9ff; cursor:pointer; transition:.15s; }
-    .task-item:hover { background:#eef0ff; }
-    .task-item.done { opacity:.55; }
-    .task-item.done .task-name { text-decoration:line-through; }
-    .task-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
-    .dot-acc { background:var(--acc); }
-    .dot-fin { background:var(--fin); }
-    .dot-eco { background:var(--eco); }
-    .dot-rest { background:var(--rest); }
-    .task-name { flex:1; font-size:14px; }
-    .task-min { font-size:12px; color:#999; }
-    .task-check { width:22px; height:22px; border:2px solid #ccc; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .task-item.done .task-check { background:var(--acc); border-color:var(--acc); }
-    .task-check svg { display:none; }
-    .task-item.done .task-check svg { display:block; }
+.progress-row{display:flex;gap:10px}.progress-col{flex:1;text-align:center}
+.ring-wrap{position:relative;width:80px;height:80px;margin:0 auto 6px}
+.ring-wrap svg{transform:rotate(-90deg)}.ring-bg{fill:none;stroke:#eee;stroke-width:8}
+.ring-fg{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-pct{font-size:16px;font-weight:700}
+.subj-name{font-size:12px;color:#666;font-weight:500}
+.progress-col:hover{cursor:pointer}
 
-    .punch-btn {
-      width:100%; padding:14px; background:var(--acc); color:#fff;
-      border:none; border-radius:10px; font-size:15px; font-weight:600;
-      cursor:pointer; margin-top:14px; transition:.15s;
-    }
-    .punch-btn:hover { background:#3a58d8; }
-    .punch-btn:disabled { background:#b0b9e8; cursor:default; }
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav{background:none;border:none;font-size:18px;cursor:pointer;color:#666;padding:4px 8px}
+.cal-title{font-size:15px;font-weight:600}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-day-head{text-align:center;font-size:11px;color:#999;padding:4px 0}
+.cal-cell{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;font-size:12px;cursor:default;transition:.15s}
+.cal-cell.other{color:#ccc}.cal-cell.today{border:2px solid var(--acc);font-weight:700;color:var(--acc)}
+.cal-cell.punched{background:var(--acc);color:#fff}.cal-cell.rest-day{background:#f0f0f0;color:#bbb}
+.cal-cell .mini-dots{display:flex;gap:2px;margin-top:2px}.mini-dot{width:5px;height:5px;border-radius:50%}
 
-    /* ── PROGRESS RING ── */
-    .progress-row { display:flex; gap:10px; }
-    .progress-col { flex:1; text-align:center; }
-    .ring-wrap { position:relative; width:80px; height:80px; margin:0 auto 6px; }
-    .ring-wrap svg { transform:rotate(-90deg); }
-    .ring-bg { fill:none; stroke:#eee; stroke-width:8; }
-    .ring-fg { fill:none; stroke-width:8; stroke-linecap:round; transition:stroke-dashoffset .6s ease; }
-    .ring-text { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-    .ring-pct { font-size:16px; font-weight:700; }
-    .ring-label { font-size:11px; color:#999; margin-top:2px; }
-    .subj-name { font-size:12px; color:#666; font-weight:500; }
+.notes-tabs{display:flex;gap:8px;margin-bottom:12px}
+.note-tab{padding:6px 14px;border-radius:20px;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer}
+.note-tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.note-form{display:flex;flex-direction:column;gap:10px}
+.note-form input,.note-form textarea,.note-form select{border:1px solid #e0e0e0;border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;outline:none;background:#fafafa}
+.note-form textarea{resize:vertical;min-height:80px}
+.note-form button{padding:10px;background:var(--acc);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.note-list{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.note-card{background:#f8f9ff;border-radius:10px;padding:12px 14px;border-left:4px solid var(--acc)}
+.note-card.fin{border-color:var(--fin)}.note-card.eco{border-color:var(--eco)}
+.note-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.note-subj{font-size:12px;font-weight:600;color:var(--acc)}
+.note-card.fin .note-subj{color:var(--fin)}.note-card.eco .note-subj{color:var(--eco)}
+.note-date{font-size:11px;color:#bbb}.note-content{font-size:13px;line-height:1.6}
+.note-del{font-size:12px;color:#ccc;cursor:pointer;margin-left:8px}.note-del:hover{color:#f55}
+.empty-tip{text-align:center;color:#bbb;font-size:13px;padding:24px 0}
 
-    /* ── CALENDAR ── */
-    .cal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-    .cal-nav { background:none; border:none; font-size:18px; cursor:pointer; color:#666; padding:4px 8px; }
-    .cal-title { font-size:15px; font-weight:600; }
-    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
-    .cal-day-head { text-align:center; font-size:11px; color:#999; padding:4px 0; }
-    .cal-cell { aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px; font-size:12px; cursor:default; }
-    .cal-cell.other { color:#ccc; }
-    .cal-cell.today { border:2px solid var(--acc); font-weight:700; color:var(--acc); }
-    .cal-cell.punched-acc { background:var(--acc); color:#fff; }
-    .cal-cell.punched-fin { background:var(--fin); color:#fff; }
-    .cal-cell.punched-eco { background:var(--eco); color:#fff; }
-    .cal-cell.punched-mix { background:linear-gradient(135deg,var(--acc) 50%,var(--fin) 50%); color:#fff; }
-    .cal-cell.rest-day { background:#f0f0f0; color:#bbb; }
-    .cal-cell .dot-row { display:flex; gap:2px; margin-top:2px; }
-    .cal-cell .mini-dot { width:5px; height:5px; border-radius:50%; }
+.stat-row{display:flex;gap:10px;margin-bottom:10px}
+.stat-box{flex:1;background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:16px;text-align:center}
+.stat-val{font-size:28px;font-weight:700;color:var(--acc)}.stat-lbl{font-size:12px;color:#999;margin-top:4px}
 
-    /* ── NOTES ── */
-    .notes-tabs { display:flex; gap:8px; margin-bottom:12px; }
-    .note-tab { padding:6px 14px; border-radius:20px; border:1px solid #ddd; background:#fff; font-size:13px; cursor:pointer; }
-    .note-tab.active { background:var(--acc); color:#fff; border-color:var(--acc); }
-    .note-form { display:flex; flex-direction:column; gap:10px; }
-    .note-form input, .note-form textarea, .note-form select {
-      border:1px solid #e0e0e0; border-radius:8px; padding:10px 12px;
-      font-size:14px; font-family:inherit; outline:none; background:#fafafa;
-    }
-    .note-form textarea { resize:vertical; min-height:80px; }
-    .note-form button {
-      padding:10px; background:var(--acc); color:#fff; border:none;
-      border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;
-    }
-    .note-list { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
-    .note-card { background:#f8f9ff; border-radius:10px; padding:12px 14px; border-left:4px solid var(--acc); }
-    .note-card.fin { border-color:var(--fin); }
-    .note-card.eco { border-color:var(--eco); }
-    .note-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-    .note-subj { font-size:12px; font-weight:600; color:var(--acc); }
-    .note-card.fin .note-subj { color:var(--fin); }
-    .note-card.eco .note-subj { color:var(--eco); }
-    .note-date { font-size:11px; color:#bbb; }
-    .note-content { font-size:13px; line-height:1.6; }
-    .note-del { font-size:12px; color:#ccc; cursor:pointer; margin-left:8px; }
-    .note-del:hover { color:#f55; }
-    .empty-tip { text-align:center; color:#bbb; font-size:13px; padding:24px 0; }
+.phase-bar{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:500;margin-bottom:12px;text-align:center}
+.phase-1{background:#e8f5e9;color:#2e7d32}.phase-2{background:#fff3e0;color:#e65100}.phase-3{background:#e3f2fd;color:#1565c0}.phase-4{background:#fce4ec;color:#c62828}
 
-    /* ── STATS ── */
-    .stat-row { display:flex; gap:10px; margin-bottom:10px; }
-    .stat-box { flex:1; background:#f8f9ff; border-radius:10px; padding:14px; text-align:center; }
-    .stat-num { font-size:24px; font-weight:700; color:var(--acc); }
-    .stat-lbl { font-size:12px; color:#999; margin-top:4px; }
-    .heatmap { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
-    .hm-cell { aspect-ratio:1; border-radius:3px; background:#eee; }
-    .hm-cell.l1 { background:#c7d4ff; }
-    .hm-cell.l2 { background:#7c8eff; }
-    .hm-cell.l3 { background:var(--acc); }
+.tip-box{background:#fffbe6;border:1px solid #ffe58f;border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.6;color:#8c6900;margin-bottom:14px}
+.tip-box strong{color:#d48806}
 
-    /* ── TOAST ── */
-    .toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
-      background:#333; color:#fff; padding:10px 20px; border-radius:24px; font-size:14px;
-      opacity:0; transition:.3s; pointer-events:none; white-space:nowrap; z-index:999; }
-    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-
-    /* ── REMIND MODAL ── */
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.4); display:none; align-items:center; justify-content:center; z-index:200; }
-    .modal-overlay.show { display:flex; }
-    .modal { background:#fff; border-radius:var(--radius); padding:24px; width:90%; max-width:380px; }
-    .modal h3 { font-size:16px; margin-bottom:16px; }
-    .modal p { font-size:13px; color:#666; line-height:1.7; margin-bottom:6px; }
-    .modal-btn { margin-top:16px; padding:10px 24px; background:var(--acc); color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; }
-
-    /* ── LOADING ── */
-    .loading-overlay {
-      position:fixed; inset:0; background:var(--bg); display:flex;
-      flex-direction:column; align-items:center; justify-content:center; z-index:999;
-      transition:opacity .4s;
-    }
-    .loading-overlay.hide { opacity:0; pointer-events:none; }
-    .loading-spinner { width:36px; height:36px; border:3px solid #e0e0e0; border-top-color:var(--acc);
-      border-radius:50%; animation:spin .8s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .loading-text { margin-top:12px; font-size:14px; color:#999; }
-  </style>
+@media(max-width:380px){.cd-num{font-size:28px}.task-name{font-size:13px}}
+</style>
 </head>
 <body>
 
-<!-- LOADING -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-spinner"></div>
-  <div class="loading-text" id="loadingText">正在连接云服务...</div>
-</div>
-
-<!-- SYNC BAR -->
-<div class="sync-bar" id="syncBar">
-  <div class="sync-dot"></div>
-  <span id="syncText">准备中...</span>
-</div>
-
-<!-- NAV -->
+<!-- 导航 -->
 <div class="nav">
-  <div class="nav-item active" onclick="switchPage('home')">🏠 今日</div>
-  <div class="nav-item" onclick="switchPage('calendar')">📅 日历</div>
-  <div class="nav-item" onclick="switchPage('notes')">📝 笔记</div>
-  <div class="nav-item" onclick="switchPage('stats')">📊 统计</div>
+  <div class="nav-item active" onclick="switchPage(0)">今日打卡</div>
+  <div class="nav-item" onclick="switchPage(1)">日历</div>
+  <div class="nav-item" onclick="switchPage(2)">笔记</div>
+  <div class="nav-item" onclick="switchPage(3)">统计</div>
 </div>
 
-<!-- TOAST -->
-<div class="toast" id="toast"></div>
-
-<!-- REMIND MODAL -->
-<div class="modal-overlay" id="remindModal">
-  <div class="modal">
-    <h3>📢 近期重要提醒</h3>
-    <div id="remindContent"></div>
-    <button class="modal-btn" onclick="document.getElementById('remindModal').classList.remove('show')">知道了</button>
-  </div>
-</div>
-
-<!-- ══════════ PAGE: 今日 ══════════ -->
-<div class="page active" id="page-home">
-
+<!-- Page 0: 今日打卡 -->
+<div class="page active" id="page0">
   <!-- 倒计时 -->
-  <div class="countdown-banner">
-    <div>
-      <div class="cd-label">距离考试还有</div>
-      <div class="cd-num" id="cdDays">--</div>
-      <div class="cd-sub">天</div>
-    </div>
-    <div class="cd-right">
-      <div class="cd-date">📅 报名截止</div>
-      <div class="cd-exam" id="cdSignup">计算中...</div>
-      <div style="height:8px"></div>
-      <div class="cd-date">🎯 考试日期</div>
-      <div class="cd-exam">2026年9月5–6日</div>
-    </div>
-  </div>
+  <div class="countdown" id="countdown"></div>
+
+  <!-- 当前阶段 -->
+  <div id="phaseBar"></div>
 
   <!-- 今日任务 -->
   <div class="card">
-    <div class="card-title">📋 今日任务 <span id="taskDate" style="font-size:12px;color:#999;font-weight:400;margin-left:auto"></span></div>
+    <div class="card-title">📖 今日任务</div>
     <div class="task-list" id="taskList"></div>
-    <button class="punch-btn" id="punchBtn" onclick="doPunch()">✅ 完成打卡</button>
   </div>
 
-  <!-- 进度环 -->
+  <!-- 进度 -->
   <div class="card">
-    <div class="card-title">📈 复习进度</div>
+    <div class="card-title">📊 备考进度（点击修改）</div>
     <div class="progress-row" id="progressRow"></div>
   </div>
 
+  <!-- 小贴士 -->
+  <div class="tip-box" id="tipBox"></div>
 </div>
 
-<!-- ══════════ PAGE: 日历 ══════════ -->
-<div class="page" id="page-calendar">
+<!-- Page 1: 日历 -->
+<div class="page" id="page1">
   <div class="card">
     <div class="cal-header">
-      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <button class="cal-nav" onclick="changeMonth(-1)">◀</button>
       <div class="cal-title" id="calTitle"></div>
-      <button class="cal-nav" onclick="calNext()">›</button>
+      <button class="cal-nav" onclick="changeMonth(1)">▶</button>
     </div>
     <div class="cal-grid" id="calGrid"></div>
   </div>
+</div>
+
+<!-- Page 2: 笔记 -->
+<div class="page" id="page2">
   <div class="card">
-    <div class="card-title">🗓️ 重要节点</div>
-    <div id="milestones"></div>
+    <div class="notes-tabs">
+      <div class="note-tab active" onclick="switchNoteTab(0)">📝 复习笔记</div>
+      <div class="note-tab" onclick="switchNoteTab(1)">❌ 错题记录</div>
+    </div>
+    <div class="note-form" id="noteForm">
+      <input id="noteTitle" placeholder="标题（可选）" />
+      <select id="noteSubject"><option value="acc">会计实务</option><option value="fin">财务管理</option><option value="eco">经济法</option></select>
+      <textarea id="noteContent" placeholder="内容..."></textarea>
+      <button onclick="addNote()">添加</button>
+    </div>
+    <div class="note-list" id="noteList"></div>
   </div>
 </div>
 
-<!-- ══════════ PAGE: 笔记 ══════════ -->
-<div class="page" id="page-notes">
-  <!-- 错题记录 -->
-  <div class="card">
-    <div class="card-title">❌ 错题记录</div>
-    <div class="note-form">
-      <select id="errSubj">
-        <option value="acc">📘 会计</option>
-        <option value="fin">📙 财管</option>
-        <option value="eco">📗 经济法</option>
-      </select>
-      <input id="errChapter" placeholder="章节（如：第三章 金融工具）" />
-      <textarea id="errContent" placeholder="错题内容 / 考点描述"></textarea>
-      <button onclick="addNote('err')">记录错题</button>
-    </div>
+<!-- Page 3: 统计 -->
+<div class="page" id="page3">
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-val" id="statTotal">0</div><div class="stat-lbl">累计打卡天数</div></div>
+    <div class="stat-box"><div class="stat-val" id="statStreak">0</div><div class="stat-lbl">连续打卡天数</div></div>
   </div>
-  <div class="card">
-    <div class="card-title">📋 错题列表</div>
-    <div class="notes-tabs">
-      <div class="note-tab active" onclick="filterNotes('err','all',this)">全部</div>
-      <div class="note-tab" onclick="filterNotes('err','acc',this)">会计</div>
-      <div class="note-tab" onclick="filterNotes('err','fin',this)">财管</div>
-      <div class="note-tab" onclick="filterNotes('err','eco',this)">经济法</div>
-    </div>
-    <div class="note-list" id="errList"></div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-val" id="statMonth">0</div><div class="stat-lbl">本月打卡天数</div></div>
+    <div class="stat-box"><div class="stat-val" id="statRate">0%</div><div class="stat-lbl">打卡率</div></div>
   </div>
-
-  <!-- 复习笔记 -->
-  <div class="card">
-    <div class="card-title">📝 复习笔记</div>
-    <div class="note-form">
-      <select id="memoSubj">
-        <option value="acc">📘 会计</option>
-        <option value="fin">📙 财管</option>
-        <option value="eco">📗 经济法</option>
-      </select>
-      <input id="memoTitle" placeholder="标题（如：长期股权投资要点）" />
-      <textarea id="memoContent" placeholder="笔记内容..."></textarea>
-      <button onclick="addNote('memo')">保存笔记</button>
-    </div>
+  <div class="card" style="margin-top:10px">
+    <div class="card-title">📅 重要日期提醒</div>
+    <div id="reminders"></div>
   </div>
-  <div class="card">
-    <div class="card-title">📚 笔记列表</div>
-    <div class="notes-tabs">
-      <div class="note-tab active" onclick="filterNotes('memo','all',this)">全部</div>
-      <div class="note-tab" onclick="filterNotes('memo','acc',this)">会计</div>
-      <div class="note-tab" onclick="filterNotes('memo','fin',this)">财管</div>
-      <div class="note-tab" onclick="filterNotes('memo','eco',this)">经济法</div>
-    </div>
-    <div class="note-list" id="memoList"></div>
-  </div>
-</div>
-
-<!-- ══════════ PAGE: 统计 ══════════ -->
-<div class="page" id="page-stats">
-  <div class="card">
-    <div class="card-title">🔥 打卡统计</div>
-    <div class="stat-row">
-      <div class="stat-box"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">累计打卡天数</div></div>
-      <div class="stat-box"><div class="stat-num" id="statStreak">0</div><div class="stat-lbl">当前连续天数</div></div>
-      <div class="stat-box"><div class="stat-num" id="statRate">0%</div><div class="stat-lbl">本月打卡率</div></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📈 近30天热力图</div>
-    <div class="heatmap" id="heatmap"></div>
-    <div style="display:flex;gap:6px;align-items:center;margin-top:10px;font-size:11px;color:#999;">
-      <span>少</span>
-      <div style="width:12px;height:12px;border-radius:2px;background:#eee"></div>
-      <div style="width:12px;height:12px;border-radius:2px;background:#c7d4ff"></div>
-      <div style="width:12px;height:12px;border-radius:2px;background:#7c8eff"></div>
-      <div style="width:12px;height:12px;border-radius:2px;background:var(--acc)"></div>
-      <span>多</span>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">📊 科目学习时长（小时）</div>
-    <div id="barChart"></div>
+  <div style="text-align:center;padding:12px 0">
+    <div style="font-size:12px;color:#bbb">数据保存在浏览器本地，刷新不丢失</div>
   </div>
 </div>
 
 <script>
-// ══════════════════════════════════
-//  CLOUDBASE CONFIG
-// ══════════════════════════════════
-const ENV_ID = 'wawa-study-checkin-d6cj8a95d1779';
-let app = null;
-let db = null;
-let auth = null;
-let currentUser = null;
-const LOCAL_USER_KEY = 'cb_study_uid';
-const STORE_KEY = 'cpa_checker_v1';
+// ══════════════════════════════════════════════════════════
+// 常量
+// ══════════════════════════════════════════════════════════
+const EXAM_DATE = new Date(2026, 8, 5);
+const REG_START = new Date(2026, 5, 12);
+const REG_END = new Date(2026, 6, 2);
+const START_DATE = new Date(2026, 4, 7);
+const WEEK_CN = ['日','一','二','三','四','五','六'];
 
-// ══════════════════════════════════
-//  CLOUDBASE INIT & AUTH
-// ══════════════════════════════════
-function setSyncStatus(status, text) {
-  const bar = document.getElementById('syncBar');
-  const txt = document.getElementById('syncText');
-  bar.className = 'sync-bar ' + status;
-  txt.textContent = text;
-}
-
-async function initCloudBase() {
-  setSyncStatus('syncing', '正在初始化...');
-  try {
-    app = cloudbase.init({ env: ENV_ID, region: 'ap-guangzhou' });
-    auth = app.auth();
-    db = app.database();
-
-    // Try anonymous login
-    setSyncStatus('syncing', '正在登录...');
-    const loginRes = await auth.anonymousAuthProvider().signIn();
-    currentUser = loginRes;
-
-    // Save user ID for future reference
-    const uid = loginRes.uid || loginRes.user_id || '';
-    localStorage.setItem(LOCAL_USER_KEY, uid);
-
-    setSyncStatus('synced', '☁️ 已连接云同步');
-    console.log('CloudBase 登录成功, uid:', uid);
-
-    // Load data from cloud
-    await loadFromCloud();
-    return true;
-  } catch (e) {
-    console.error('CloudBase 初始化失败:', e);
-    setSyncStatus('error', '⚠️ 云同步不可用，使用本地存储');
-    return false;
-  }
-}
-
-// ══════════════════════════════════
-//  CLOUD DATA LAYER
-// ══════════════════════════════════
-async function loadFromCloud() {
-  setSyncStatus('syncing', '正在同步数据...');
-  try {
-    // Load user doc from 'users' collection (keyed by anonymous uid)
-    const uid = localStorage.getItem(LOCAL_USER_KEY);
-    if (!uid) { setSyncStatus('synced', '☁️ 已连接'); return; }
-
-    // Load punches
-    const punchRes = await db.collection('checkins').where({ _uid: uid }).orderBy('date', 'asc').limit(1000).get();
-    // Load mistakes
-    const errRes = await db.collection('mistakes').where({ _uid: uid }).orderBy('_id', 'desc').limit(1000).get();
-    // Load notes
-    const memoRes = await db.collection('notes').where({ _uid: uid }).orderBy('_id', 'desc').limit(1000).get();
-
-    // Merge into local data
-    const data = loadData();
-
-    // Merge punches
-    if (punchRes.data && punchRes.data.length > 0) {
-      if (!data.punches) data.punches = {};
-      punchRes.data.forEach(r => { data.punches[r.date] = r.data; });
-    }
-
-    // Merge notes
-    if (!data.notes) data.notes = { err: [], memo: [] };
-    if (errRes.data && errRes.data.length > 0) {
-      data.notes.err = errRes.data.map(r => ({ id: r._id, subj: r.subj, chapter: r.chapter, content: r.content, date: r.date }));
-    }
-    if (memoRes.data && memoRes.data.length > 0) {
-      data.notes.memo = memoRes.data.map(r => ({ id: r._id, subj: r.subj, chapter: r.chapter, content: r.content, date: r.date }));
-    }
-
-    saveData(data);
-    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
-  } catch (e) {
-    console.error('数据同步失败:', e);
-    setSyncStatus('error', '⚠️ 同步失败，使用本地数据');
-  }
-}
-
-async function savePunchToCloud(dateStr, punchData) {
-  if (!db) return;
-  try {
-    const uid = localStorage.getItem(LOCAL_USER_KEY);
-    if (!uid) return;
-
-    await db.collection('checkins').where({ _uid: uid, date: dateStr }).remove();
-    await db.collection('checkins').add({
-      data: { _uid: uid, date: dateStr, data: punchData }
-    });
-    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
-  } catch (e) {
-    console.error('打卡同步失败:', e);
-    setSyncStatus('error', '⚠️ 同步失败');
-  }
-}
-
-async function saveProgressToCloud(progData) {
-  if (!db) return;
-  try {
-    const uid = localStorage.getItem(LOCAL_USER_KEY);
-    if (!uid) return;
-    // Store progress in checkins as a special record
-    await db.collection('checkins').where({ _uid: uid, date: '__progress__' }).remove();
-    await db.collection('checkins').add({
-      data: { _uid: uid, date: '__progress__', data: progData }
-    });
-    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
-  } catch (e) {
-    console.error('进度同步失败:', e);
-  }
-}
-
-async function addNoteToCloud(type, noteObj) {
-  if (!db) return;
-  try {
-    const uid = localStorage.getItem(LOCAL_USER_KEY);
-    if (!uid) return;
-    const coll = type === 'err' ? 'mistakes' : 'notes';
-    await db.collection(coll).add({
-      data: { _uid: uid, subj: noteObj.subj, chapter: noteObj.chapter, content: noteObj.content, date: noteObj.date }
-    });
-    // Get the real _id back
-    const res = await db.collection(coll).where({ _uid: uid, date: noteObj.date, content: noteObj.content }).orderBy('_id', 'desc').limit(1).get();
-    if (res.data && res.data.length > 0) {
-      return res.data[0]._id;
-    }
-    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
-  } catch (e) {
-    console.error('笔记同步失败:', e);
-    setSyncStatus('error', '⚠️ 同步失败');
-  }
-  return null;
-}
-
-async function deleteNoteToCloud(type, id) {
-  if (!db || !id) return;
-  try {
-    const coll = type === 'err' ? 'mistakes' : 'notes';
-    await db.collection(coll).doc(id).remove();
-    setSyncStatus('synced', '☁️ 已同步 (' + new Date().toLocaleTimeString() + ')');
-  } catch (e) {
-    console.error('删除同步失败:', e);
-    setSyncStatus('error', '⚠️ 同步失败');
-  }
-}
-
-// ══════════════════════════════════
-//  LOCAL DATA STORE (fallback + cache)
-// ══════════════════════════════════
-function loadData() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { return {}; }
-}
-function saveData(d) { localStorage.setItem(STORE_KEY, JSON.stringify(d)); }
-
-// ── 学习计划生成 ──
-const PHASES = [
-  { start: '2026-05-07', end: '2026-05-31', name: '第一阶段', focus: '会计查漏补缺 + 财管推进' },
-  { start: '2026-06-01', end: '2026-06-30', name: '第二阶段', focus: '财管收尾 + 经济法刷题 + 会计刷题' },
-  { start: '2026-07-01', end: '2026-08-10', name: '第三阶段', focus: '三科历年真题轮转强化' },
-  { start: '2026-08-11', end: '2026-09-04', name: '第四阶段', focus: '全真模拟 + 错题冲刺' },
-];
-
-function getPhase(dateStr) {
-  for (const p of PHASES) {
-    if (dateStr >= p.start && dateStr <= p.end) return p;
-  }
-  return null;
-}
-
-function getTodayTasks(dateStr) {
-  const d = new Date(dateStr);
-  const dow = d.getDay();
-  if (dow === 0) return [{ subj: 'rest', name: '🌿 休息日', min: 0 }];
-  const ph = getPhase(dateStr);
-  if (!ph) return [{ subj: 'rest', name: '考试/考后 休整', min: 0 }];
-  const tasks = [];
-  const p = PHASES.indexOf(ph);
-
-  if (p === 0) {
-    if ([1,3,5].includes(dow)) {
-      tasks.push({ subj:'acc', name:'📘 会计 — 查漏补缺（听课/刷题）', min:60 });
-      tasks.push({ subj:'acc', name:'📘 会计 — 错题回顾', min:30 });
-      tasks.push({ subj:'fin', name:'📙 财管 — 巩固已学章节', min:30 });
-    } else {
-      tasks.push({ subj:'fin', name:'📙 财管 — 推进新章节', min:70 });
-      tasks.push({ subj:'fin', name:'📙 财管 — 章节练习', min:50 });
-    }
-  } else if (p === 1) {
-    if ([1,2].includes(dow)) {
-      tasks.push({ subj:'fin', name:'📙 财管 — 最后几章收尾', min:70 });
-      tasks.push({ subj:'fin', name:'📙 财管 — 章节真题', min:50 });
-    } else if ([3,4].includes(dow)) {
-      tasks.push({ subj:'eco', name:'📗 经济法 — 刷题（按章节）', min:60 });
-      tasks.push({ subj:'eco', name:'📗 经济法 — 错题精析', min:60 });
-    } else {
-      tasks.push({ subj:'acc', name:'📘 会计 — 专项刷题', min:70 });
-      tasks.push({ subj:'eco', name:'📗 经济法 — 巩固练习', min:50 });
-    }
-  } else if (p === 2) {
-    const rot = [['acc','fin'],['fin','eco'],['eco','acc'],['acc','eco'],['fin','acc'],['eco','fin']];
-    const pair = rot[(d.getDate()-1) % 6];
-    const map = { acc:'📘 会计', fin:'📙 财管', eco:'📗 经济法' };
-    tasks.push({ subj:pair[0], name:`${map[pair[0]]} — 历年真题`, min:60 });
-    tasks.push({ subj:pair[1], name:`${map[pair[1]]} — 历年真题 + 错题`, min:60 });
-  } else {
-    if ([1,3,5].includes(dow)) {
-      tasks.push({ subj:'acc', name:'📘 会计 — 全真模拟卷', min:90 });
-      tasks.push({ subj:'acc', name:'📘 会计 — 对答案复盘', min:30 });
-    } else {
-      tasks.push({ subj:'fin', name:'📙 财管 — 模拟+复盘', min:60 });
-      tasks.push({ subj:'eco', name:'📗 经济法 — 模拟+复盘', min:60 });
-    }
-  }
-  return tasks;
-}
-
-// ══════════════════════════════════
-//  COUNTDOWN
-// ══════════════════════════════════
-function updateCountdown() {
-  const exam = new Date('2026-09-05');
-  const signup = new Date('2026-07-02');
-  const now = new Date();
-  const diffExam = Math.ceil((exam - now) / 86400000);
-  const diffSign = Math.ceil((signup - now) / 86400000);
-  document.getElementById('cdDays').textContent = diffExam > 0 ? diffExam : 0;
-  document.getElementById('cdSignup').textContent =
-    diffSign > 0 ? `还有 ${diffSign} 天` : '已截止';
-}
-
-// ══════════════════════════════════
-//  TODAY TASKS
-// ══════════════════════════════════
-let todayKey = '';
-function renderToday() {
-  const d = new Date();
-  todayKey = d.toISOString().slice(0,10);
-  document.getElementById('taskDate').textContent =
-    `${d.getMonth()+1}月${d.getDate()}日 ${['日','一','二','三','四','五','六'][d.getDay()]}`;
-
-  const data = loadData();
-  const punch = data.punches || {};
-  const todayPunch = punch[todayKey] || { done: [], tasks: [] };
-
-  const tasks = getTodayTasks(todayKey);
-  if (!todayPunch.tasks || todayPunch.tasks.length === 0) todayPunch.tasks = tasks;
-
-  const list = document.getElementById('taskList');
-  list.innerHTML = '';
-  (todayPunch.tasks.length ? todayPunch.tasks : tasks).forEach((t, i) => {
-    const done = (todayPunch.done || []).includes(i);
-    const div = document.createElement('div');
-    div.className = 'task-item' + (done ? ' done' : '');
-    div.innerHTML = `
-      <div class="task-dot dot-${t.subj}"></div>
-      <div class="task-name">${t.name}</div>
-      ${t.min ? `<div class="task-min">${t.min}min</div>` : ''}
-      <div class="task-check">
-        <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-          <path d="M1 5l3.5 3.5L11 1" stroke="white" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </div>`;
-    div.onclick = () => toggleTask(i);
-    list.appendChild(div);
-  });
-
-  const punchBtn = document.getElementById('punchBtn');
-  if (todayPunch.punched) {
-    punchBtn.textContent = '🎉 今日已打卡！';
-    punchBtn.disabled = true;
-  } else {
-    punchBtn.disabled = false;
-    punchBtn.textContent = '✅ 完成打卡';
-  }
-}
-
-function toggleTask(i) {
-  const data = loadData();
-  const punch = data.punches || {};
-  if (!punch[todayKey]) punch[todayKey] = { done: [], tasks: getTodayTasks(todayKey), punched: false };
-  const done = punch[todayKey].done;
-  const idx = done.indexOf(i);
-  if (idx >= 0) done.splice(idx, 1);
-  else done.push(i);
-  data.punches = punch;
-  saveData(data);
-  savePunchToCloud(todayKey, punch[todayKey]);
-  renderToday();
-}
-
-async function doPunch() {
-  const data = loadData();
-  const punch = data.punches || {};
-  if (!punch[todayKey]) punch[todayKey] = { done: [], tasks: getTodayTasks(todayKey), punched: false };
-  punch[todayKey].punched = true;
-  const tasks = punch[todayKey].tasks || [];
-  const mins = { acc:0, fin:0, eco:0 };
-  tasks.forEach(t => { if (t.subj in mins) mins[t.subj] += t.min||0; });
-  punch[todayKey].mins = mins;
-  data.punches = punch;
-  saveData(data);
-  await savePunchToCloud(todayKey, punch[todayKey]);
-  renderToday();
-  renderProgress();
-  showToast('🎉 打卡成功！已同步到云端');
-}
-
-// ══════════════════════════════════
-//  PROGRESS RINGS
-// ══════════════════════════════════
-const SUBJECT_PROGRESS = {
-  acc: { name:'会计', color:'var(--acc)', total:22, done:10, label:'已听课' },
-  fin: { name:'财管', color:'var(--fin)', total:16, done:6,  label:'已学章节' },
-  eco: { name:'经济法', color:'var(--eco)', total:12, done:0,  label:'刷题进度' },
+// 学习计划数据
+const SUBJECTS = {
+  acc: { name: '会计实务', total: 21, color: '#4f6ef2', done: 0 },
+  fin: { name: '财务管理', total: 10, color: '#e8a838', done: 6 },
+  eco: { name: '经济法', total: 12, color: '#3dba8c', done: 0 },
 };
 
-function renderProgress() {
-  const data = loadData();
-  const prog = data.progress || {};
-  const row = document.getElementById('progressRow');
-  row.innerHTML = '';
-  Object.entries(SUBJECT_PROGRESS).forEach(([k,s]) => {
-    const p = prog[k] || { done: s.done };
-    const pct = Math.min(100, Math.round(p.done / s.total * 100));
-    const r = 34; const circ = 2 * Math.PI * r;
-    const offset = circ * (1 - pct/100);
-    const col = document.createElement('div');
-    col.className = 'progress-col';
-    col.innerHTML = `
-      <div class="ring-wrap" onclick="editProgress('${k}','${s.name}',${s.total},${p.done})">
-        <svg width="80" height="80" viewBox="0 0 80 80">
-          <circle class="ring-bg" cx="40" cy="40" r="${r}"/>
-          <circle class="ring-fg" cx="40" cy="40" r="${r}"
-            stroke="${s.color}"
-            stroke-dasharray="${circ}"
-            stroke-dashoffset="${offset}"/>
-        </svg>
-        <div class="ring-text">
-          <div class="ring-pct" style="color:${s.color}">${pct}%</div>
-          <div class="ring-label">${p.done}/${s.total}</div>
-        </div>
-      </div>
-      <div class="subj-name">${s.name}</div>`;
-    row.appendChild(col);
-  });
-}
-
-async function editProgress(key, name, total, cur) {
-  const v = prompt(`${name} 当前进度（共${total}章/节）\n已完成多少？`, cur);
-  if (v === null) return;
-  const n = parseInt(v);
-  if (isNaN(n) || n < 0 || n > total) { showToast('请输入有效数字'); return; }
-  const data = loadData();
-  if (!data.progress) data.progress = {};
-  data.progress[key] = { done: n };
-  saveData(data);
-  await saveProgressToCloud(data.progress);
-  renderProgress();
-  showToast(`✅ ${name} 进度已同步`);
-}
-
-// ══════════════════════════════════
-//  CALENDAR
-// ══════════════════════════════════
-let calYear = new Date().getFullYear();
+// ── 状态 ──
 let calMonth = new Date().getMonth();
+let calYear = new Date().getFullYear();
+let currentNoteTab = 0;
 
-function renderCalendar() {
-  const data = loadData();
-  const punch = data.punches || {};
-  const today = new Date().toISOString().slice(0,10);
-
-  const months = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
-  document.getElementById('calTitle').textContent = `${calYear}年${months[calMonth]}月`;
-
-  const first = new Date(calYear, calMonth, 1).getDay();
-  const days = new Date(calYear, calMonth+1, 0).getDate();
-  const grid = document.getElementById('calGrid');
-  grid.innerHTML = '';
-  ['日','一','二','三','四','五','六'].forEach(h => {
-    const d = document.createElement('div');
-    d.className = 'cal-day-head'; d.textContent = h; grid.appendChild(d);
-  });
-  for (let i=0; i<first; i++) {
-    const d = document.createElement('div'); d.className='cal-cell other'; grid.appendChild(d);
-  }
-  for (let d=1; d<=days; d++) {
-    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const cell = document.createElement('div');
-    const dow = new Date(dateStr).getDay();
-    let cls = 'cal-cell';
-    if (dateStr === today) cls += ' today';
-    else if (dow === 0) cls += ' rest-day';
-
-    const p = punch[dateStr];
-    let dotHtml = '';
-    if (p && p.punched) {
-      const mins = p.mins || {};
-      const hasAcc = mins.acc > 0, hasFin = mins.fin > 0, hasEco = mins.eco > 0;
-      dotHtml = '<div class="dot-row">';
-      if (hasAcc) dotHtml += '<div class="mini-dot" style="background:var(--acc)"></div>';
-      if (hasFin) dotHtml += '<div class="mini-dot" style="background:var(--fin)"></div>';
-      if (hasEco) dotHtml += '<div class="mini-dot" style="background:var(--eco)"></div>';
-      dotHtml += '</div>';
-      cls += ' punched-acc';
-    }
-    cell.className = cls;
-    cell.innerHTML = `<span>${d}</span>${dotHtml}`;
-    grid.appendChild(cell);
-  }
+// ══════════════════════════════════════════════════════════
+// 学习计划任务生成（每天集中2h + 零散30-60min）
+// ══════════════════════════════════════════════════════════
+function getPhase(d) {
+  const m = d.getMonth(), dd = d.getDate();
+  if ((m===4&&dd>=7)||(m===4)) return {phase:1, name:'第一阶段：夯实基础', cls:'phase-1'};
+  if (m===5) return {phase:2, name:'第二阶段：全面推进', cls:'phase-2'};
+  if (m===6||(m===7&&dd<=10)) return {phase:3, name:'第三阶段：强化刷题', cls:'phase-3'};
+  if ((m===7&&dd>=11)||(m===8&&dd<=4)) return {phase:4, name:'第四阶段：冲刺模考', cls:'phase-4'};
+  return {phase:5, name:'考试', cls:'phase-4'};
 }
 
-function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
-function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function weekOf(d, dStart) {
+  return Math.floor((d - dStart) / 604800000) + 1;
+}
 
-function renderMilestones() {
-  const nodes = [
-    { date:'2026-06-12', label:'📋 报名开始', color:'#4f6ef2' },
-    { date:'2026-07-02', label:'⏰ 报名截止', color:'#e8503a' },
-    { date:'2026-09-05', label:'🎯 考试第一天', color:'#3dba8c' },
-    { date:'2026-09-06', label:'🎯 考试第二天', color:'#3dba8c' },
-  ];
+function getTasks(d) {
+  const wd = d.getDay();
+  const m = d.getMonth(), dd = d.getDate();
+  const tasks = [];
+
+  if (wd === 0) {
+    return [{name:'🛌 休息日', subj:'rest', focus:false}];
+  }
+
+  const w = weekOf(d, START_DATE);
+
+  // 第一阶段 5/7-5/31
+  if (m===4 && dd>=7) {
+    const accTopics = {1:'第1-3章 存货/固定资产/无形资产',2:'第4-6章 投资性房地产/长投',3:'第7-9章 资产减值/金融资产/薪酬',4:'第10-12章 收入/所得税/外币'};
+    const finTopics = {1:'第6章复习+第7章 投资管理',2:'第8章 成本管理',3:'第9章 收入与分配',4:'第10章 财务分析与评价'};
+    if (wd===1||wd===3||wd===5) {
+      tasks.push({name:'📗 会计 '+(accTopics[Math.min(w,4)]||'重点梳理+刷题'), subj:'acc', focus:true});
+      tasks.push({name:'经济法刷10题/法条速记', subj:'eco', focus:false});
+    } else if (wd===2||wd===4) {
+      tasks.push({name:'📙 财管 '+(finTopics[Math.min(w,4)]||'推进+习题'), subj:'fin', focus:true});
+      tasks.push({name:'经济法刷10题/法条速记', subj:'eco', focus:false});
+    } else {
+      tasks.push({name:'📗 会计 综合练习+错题巩固', subj:'acc', focus:true});
+      tasks.push({name:'经济法刷题+错题回顾', subj:'eco', focus:false});
+    }
+    return tasks;
+  }
+
+  // 第二阶段 6/1-6/30
+  if (m===5) {
+    const finTopics = {1:'第7-8章 投资管理+成本管理',2:'第9-10章 收入分配+财务分析',3:'综合练习+计算专项',4:'历年真题'};
+    const accTopics = {1:'第13-15章 合并报表等难点',2:'第16-18章 会计政策/日后事项',3:'第19-21章 政府会计等',4:'综合练习+查漏补缺'};
+    if (wd===1||wd===4) {
+      tasks.push({name:'📙 财管 '+(finTopics[Math.min(w,4)]||'专项训练'), subj:'fin', focus:true});
+      tasks.push({name:'经济法公司法刷题', subj:'eco', focus:false});
+    } else if (wd===2||wd===5) {
+      tasks.push({name:'📗 会计 '+(accTopics[Math.min(w,4)]||'刷题补缺'), subj:'acc', focus:true});
+      tasks.push({name:'经济法合同法刷题', subj:'eco', focus:false});
+    } else if (wd===3) {
+      tasks.push({name:'📙 财管 公式默写+计算专项', subj:'fin', focus:true});
+      tasks.push({name:'经济法证券法/税法刷题', subj:'eco', focus:false});
+    } else {
+      tasks.push({name:'📗 会计 错题复盘+重点回顾', subj:'acc', focus:true});
+      tasks.push({name:'经济法综合刷题+错题', subj:'eco', focus:false});
+    }
+    return tasks;
+  }
+
+  // 第三阶段 7/1-8/10
+  if (m===6||(m===7&&dd<=10)) {
+    if (wd===1||wd===4) {
+      tasks.push({name:'📗 会计 历年真题+错题精练', subj:'acc', focus:true});
+      tasks.push({name:'经济法真题+法条速记', subj:'eco', focus:false});
+    } else if (wd===2||wd===5) {
+      tasks.push({name:'📙 财管 历年真题+计算专项', subj:'fin', focus:true});
+      tasks.push({name:'财管公式默写/经济法刷题', subj:'fin', focus:false});
+    } else if (wd===3) {
+      tasks.push({name:'会计/财管 交叉复习薄弱点', subj:'acc', focus:true});
+      tasks.push({name:'经济法真题+错题回顾', subj:'eco', focus:false});
+    } else {
+      tasks.push({name:'经济法真题套卷（1.5h）+会计回顾（0.5h）', subj:'eco', focus:true});
+      tasks.push({name:'经济法综合模拟+法条梳理', subj:'eco', focus:false});
+    }
+    return tasks;
+  }
+
+  // 第四阶段 8/11-9/4
+  if ((m===7&&dd>=11)||(m===8&&dd<=4)) {
+    const subjects = ['会计实务','财务管理','经济法'];
+    const idx = Math.floor((d - new Date(2026,7,11)) / 86400000) % 3;
+    if (wd===1||wd===4) {
+      tasks.push({name:'📋 '+subjects[idx]+' 全真模拟卷（限时2h）', subj:'acc', focus:true});
+      tasks.push({name:'错题回顾+公式/法条速记', subj:'eco', focus:false});
+    } else if (wd===2||wd===5) {
+      tasks.push({name:'📝 错题集中复盘 三科轮流', subj:'acc', focus:true});
+      tasks.push({name:'经济法高频法条速记', subj:'eco', focus:false});
+    } else if (wd===3) {
+      tasks.push({name:'重点公式/法条/分录速记', subj:'acc', focus:true});
+      tasks.push({name:'经济法必背法条', subj:'eco', focus:false});
+    } else {
+      tasks.push({name:'📋 模拟押题卷', subj:'acc', focus:true});
+      tasks.push({name:'考前速记手册浏览', subj:'eco', focus:false});
+    }
+    return tasks;
+  }
+
+  return [{name:'自由复习', subj:'acc', focus:true}];
+}
+
+// ══════════════════════════════════════════════════════════
+// 数据存取（纯 localStorage）
+// ══════════════════════════════════════════════════════════
+function getData() {
+  return JSON.parse(localStorage.getItem('study_data') || '{"checkins":{},"notes":[],"stats":{}}');
+}
+
+function saveData(data) {
+  localStorage.setItem('study_data', JSON.stringify(data));
+}
+
+// ══════════════════════════════════════════════════════════
+// 初始化
+// ══════════════════════════════════════════════════════════
+function init() {
+  renderAll();
+}
+
+function renderAll() {
+  renderCountdown();
+  renderPhase();
+  renderTasks();
+  renderProgress();
+  renderCalendar();
+  renderNotes();
+  renderStats();
+  renderTips();
+  renderReminders();
+}
+
+// ══════════════════════════════════════════════════════════
+// 渲染函数
+// ══════════════════════════════════════════════════════════
+function renderCountdown() {
+  const now = new Date();
+  const days = Math.max(0, Math.ceil((EXAM_DATE - now) / 86400000));
+  const regDays = REG_START - now > 0 ? Math.ceil((REG_START - now)/86400000) : 0;
+  const regEndDays = REG_END - now > 0 ? Math.ceil((REG_END - now)/86400000) : 0;
+  let sub = regDays > 0 ? '距报名还有'+regDays+'天' : regEndDays > 0 ? '报名中！距截止'+regEndDays+'天' : '';
+  document.getElementById('countdown').innerHTML =
+    '<div><div class="cd-label">距离考试</div><div class="cd-num">'+days+'</div><div class="cd-sub">天</div></div>' +
+    '<div class="cd-right"><div class="cd-date">2026.9.5-6</div><div class="cd-exam">中级会计师</div>' +
+    (sub ? '<div style="font-size:12px;opacity:.8;margin-top:4px">'+sub+'</div>' : '') + '</div>';
+}
+
+function renderPhase() {
+  const now = new Date();
+  const p = getPhase(now);
+  document.getElementById('phaseBar').innerHTML = '<div class="phase-bar '+p.cls+'">'+p.name+'</div>';
+}
+
+function renderTasks() {
   const today = new Date().toISOString().slice(0,10);
-  const el = document.getElementById('milestones');
-  el.innerHTML = nodes.map(n => {
-    const diff = Math.ceil((new Date(n.date) - new Date(today)) / 86400000);
-    const tag = diff < 0 ? '已过' : diff === 0 ? '今天！' : `还有${diff}天`;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f0f0;">
-      <div style="width:10px;height:10px;border-radius:50%;background:${n.color};flex-shrink:0"></div>
-      <div style="flex:1;font-size:13px">${n.label}</div>
-      <div style="font-size:12px;color:#999">${n.date}</div>
-      <div style="font-size:12px;color:${n.color};font-weight:600;min-width:52px;text-align:right">${tag}</div>
-    </div>`;
+  const data = getData();
+  const checked = data.checkins[today] || [];
+  const tasks = getTasks(new Date());
+  const list = document.getElementById('taskList');
+  list.innerHTML = tasks.map((t, i) => {
+    const dotCls = t.subj==='acc'?'dot-acc':t.subj==='fin'?'dot-fin':t.subj==='eco'?'dot-eco':'dot-rest';
+    const done = checked.includes(i) ? 'done' : '';
+    const tag = t.focus ? '<span class="task-tag tag-focus">集中学习</span>' : '<span class="task-tag tag-scatter">零散时间</span>';
+    return '<div class="task-item '+done+'" onclick="toggleTask('+i+')">' +
+      '<div class="task-dot '+dotCls+'"></div>' +
+      '<div style="flex:1"><div class="task-name">'+t.name+'</div></div>' +
+      tag +
+      '<div class="task-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div></div>';
   }).join('');
 }
 
-// ══════════════════════════════════
-//  NOTES
-// ══════════════════════════════════
-let noteFilters = { err:'all', memo:'all' };
-
-async function addNote(type) {
-  const subj = document.getElementById(type==='err'?'errSubj':'memoSubj').value;
-  const chapter = type==='err' ? document.getElementById('errChapter').value : document.getElementById('memoTitle').value;
-  const content = document.getElementById(type==='err'?'errContent':'memoContent').value;
-  if (!content.trim()) { showToast('请填写内容'); return; }
-
-  const noteObj = {
-    subj, chapter: chapter.trim(), content: content.trim(),
-    date: new Date().toISOString().slice(0,10)
-  };
-
-  const cloudId = await addNoteToCloud(type, noteObj);
-  if (cloudId) noteObj.id = cloudId;
-  else noteObj.id = Date.now();
-
-  const data = loadData();
-  if (!data.notes) data.notes = { err:[], memo:[] };
-  data.notes[type].unshift(noteObj);
-  saveData(data);
-
-  document.getElementById(type==='err'?'errContent':'memoContent').value = '';
-  if (type==='err') document.getElementById('errChapter').value='';
-  else document.getElementById('memoTitle').value='';
-  renderNotes(type);
-  showToast(type==='err'?'❌ 错题已同步到云端':'📝 笔记已同步到云端');
-}
-
-async function delNote(type, id) {
-  await deleteNoteToCloud(type, id);
-  const data = loadData();
-  data.notes[type] = (data.notes[type]||[]).filter(n => n.id !== id);
-  saveData(data);
-  renderNotes(type);
-  showToast('🗑️ 已删除并同步');
-}
-
-function filterNotes(type, subj, el) {
-  noteFilters[type] = subj;
-  el.closest('.notes-tabs').querySelectorAll('.note-tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  renderNotes(type);
-}
-
-function renderNotes(type) {
-  const data = loadData();
-  const notes = (data.notes||{})[type]||[];
-  const f = noteFilters[type]||'all';
-  const filtered = f==='all' ? notes : notes.filter(n=>n.subj===f);
-  const el = document.getElementById(type+'List');
-  if (!filtered.length) { el.innerHTML = '<div class="empty-tip">暂无记录</div>'; return; }
-  const nameMap = { acc:'会计', fin:'财管', eco:'经济法' };
-  el.innerHTML = filtered.map(n => `
-    <div class="note-card ${n.subj}">
-      <div class="note-head">
-        <span class="note-subj">${nameMap[n.subj]}${n.chapter ? ' · '+n.chapter : ''}</span>
-        <span style="display:flex;align-items:center">
-          <span class="note-date">${n.date}</span>
-          <span class="note-del" onclick="delNote('${type}','${n.id}')">✕</span>
-        </span>
-      </div>
-      <div class="note-content">${n.content.replace(/\n/g,'<br>')}</div>
-    </div>`).join('');
-}
-
-// ══════════════════════════════════
-//  STATS
-// ══════════════════════════════════
-function renderStats() {
-  const data = loadData();
-  const punch = data.punches || {};
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
-
-  const total = Object.values(punch).filter(p=>p.punched).length;
-  document.getElementById('statTotal').textContent = total;
-
-  let streak = 0, d = new Date(today);
-  while (true) {
-    const s = d.toISOString().slice(0,10);
-    if (punch[s] && punch[s].punched) { streak++; d.setDate(d.getDate()-1); }
-    else if (s === todayStr) { d.setDate(d.getDate()-1); }
-    else break;
-    if (streak > 365) break;
-  }
-  document.getElementById('statStreak').textContent = streak;
-
-  const ym = todayStr.slice(0,7);
-  let monthDays = 0, monthPunch = 0;
-  for (let d2=1; d2<=today.getDate(); d2++) {
-    const s = `${ym}-${String(d2).padStart(2,'0')}`;
-    if (new Date(s).getDay() !== 0) {
-      monthDays++;
-      if (punch[s] && punch[s].punched) monthPunch++;
-    }
-  }
-  document.getElementById('statRate').textContent =
-    monthDays ? Math.round(monthPunch/monthDays*100)+'%' : '0%';
-
-  const hm = document.getElementById('heatmap');
-  hm.innerHTML = '';
-  for (let i=29; i>=0; i--) {
-    const dd = new Date(today); dd.setDate(dd.getDate()-i);
-    const s = dd.toISOString().slice(0,10);
-    const p = punch[s];
-    let cls = 'hm-cell';
-    if (p && p.punched) {
-      const m = (p.mins||{}); const totalM = (m.acc||0)+(m.fin||0)+(m.eco||0);
-      if (totalM >= 100) cls += ' l3';
-      else if (totalM >= 60) cls += ' l2';
-      else cls += ' l1';
-    }
-    const cell = document.createElement('div');
-    cell.className = cls;
-    cell.title = s + (p && p.punched ? ' ✅ 已打卡' : '');
-    hm.appendChild(cell);
-  }
-
-  const subjMins = { acc:0, fin:0, eco:0 };
-  Object.values(punch).forEach(p => {
-    if (p.mins) Object.keys(subjMins).forEach(k => subjMins[k] += (p.mins[k]||0));
-  });
-  const maxH = Math.max(...Object.values(subjMins), 60);
-  const colors = { acc:'var(--acc)', fin:'var(--fin)', eco:'var(--eco)' };
-  const names = { acc:'会计', fin:'财管', eco:'经济法' };
-  document.getElementById('barChart').innerHTML = `
-    <div style="display:flex;gap:16px;align-items:flex-end;height:120px;padding:0 8px">
-      ${Object.entries(subjMins).map(([k,v]) => `
-        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="font-size:11px;color:#666">${Math.round(v/60)}h</div>
-          <div style="width:100%;background:${colors[k]};border-radius:6px 6px 0 0;
-            height:${Math.round(v/maxH*90)+10}px;transition:.6s"></div>
-          <div style="font-size:12px;color:#666">${names[k]}</div>
-        </div>`).join('')}
-    </div>`;
-}
-
-// ══════════════════════════════════
-//  REMINDERS
-// ══════════════════════════════════
-function checkReminders() {
+function toggleTask(idx) {
   const today = new Date().toISOString().slice(0,10);
-  const alerts = [
-    { date:'2026-06-12', msg:'📋 <b>今日起可以报名中级会计师考试！</b><br>请登录财政部官网完成报名。' },
-    { date:'2026-06-25', msg:'⚠️ <b>报名截止还剩7天</b>，请确认是否已完成报名和缴费。' },
-    { date:'2026-07-02', msg:'🚨 <b>今天是报名最后截止日！</b><br>18:00前完成缴费，逾期无法补报。' },
-    { date:'2026-09-04', msg:'🎯 <b>明天就是考试了！</b><br>提前准备好准考证、身份证，早睡早起，加油！' },
+  const data = getData();
+  if (!data.checkins[today]) data.checkins[today] = [];
+  const ci = data.checkins[today].indexOf(idx);
+  if (ci >= 0) data.checkins[today].splice(ci, 1);
+  else data.checkins[today].push(idx);
+  saveData(data);
+  renderTasks();
+  renderCalendar();
+  renderStats();
+}
+
+function renderProgress() {
+  const data = getData();
+  const progress = data.stats && data.stats.progress ? data.stats.progress : { acc:0, fin:6, eco:0 };
+  const row = document.getElementById('progressRow');
+  const circumference = 2 * Math.PI * 34;
+  row.innerHTML = ['acc','fin','eco'].map(key => {
+    const s = SUBJECTS[key];
+    const done = progress[key] || 0;
+    const pct = Math.min(100, Math.round(done/s.total*100));
+    const offset = circumference * (1 - pct/100);
+    return '<div class="progress-col" onclick="editProgress(\''+key+'\')">' +
+      '<div class="ring-wrap"><svg width="80" height="80" viewBox="0 0 80 80">' +
+      '<circle class="ring-bg" cx="40" cy="40" r="34"/>' +
+      '<circle class="ring-fg" cx="40" cy="40" r="34" stroke="'+s.color+'" stroke-dasharray="'+circumference+'" stroke-dashoffset="'+offset+'"/>' +
+      '</svg><div class="ring-text"><div class="ring-pct" style="color:'+s.color+'">'+done+'/'+s.total+'</div></div></div>' +
+      '<div class="subj-name">'+s.name+'</div></div>';
+  }).join('');
+}
+
+function editProgress(key) {
+  const data = getData();
+  const progress = data.stats && data.stats.progress ? data.stats.progress : { acc:0, fin:6, eco:0 };
+  const val = prompt(SUBJECTS[key].name + ' 已完成章节数：', progress[key] || 0);
+  if (val !== null) {
+    const n = parseInt(val);
+    if (!isNaN(n) && n >= 0 && n <= SUBJECTS[key].total) {
+      if (!data.stats) data.stats = {};
+      if (!data.stats.progress) data.stats.progress = { acc:0, fin:6, eco:0 };
+      data.stats.progress[key] = n;
+      saveData(data);
+      renderProgress();
+    }
+  }
+}
+
+function renderCalendar() {
+  const grid = document.getElementById('calGrid');
+  const title = document.getElementById('calTitle');
+  title.textContent = calYear + '年' + (calMonth+1) + '月';
+
+  const data = getData();
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const today = new Date().toISOString().slice(0,10);
+
+  let html = WEEK_CN.map(d => '<div class="cal-day-head">'+d+'</div>').join('');
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-cell other"></div>';
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const dt = new Date(calYear, calMonth, d);
+    const wd = dt.getDay();
+    const isToday = dateStr === today;
+    const checked = data.checkins[dateStr];
+    let cls = 'cal-cell';
+    if (isToday) cls += ' today';
+    if (wd === 0) cls += ' rest-day';
+    else if (checked && checked.length > 0) cls += ' punched';
+
+    const dots = checked && checked.length > 0 ? '<div class="mini-dots"><div class="mini-dot" style="background:var(--acc)"></div></div>' : '';
+    html += '<div class="'+cls+'">'+d+dots+'</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCalendar();
+}
+
+function renderNotes() {
+  const data = getData();
+  const notes = (data.notes || []).filter(n => {
+    if (currentNoteTab === 0) return n.type !== 'error';
+    return n.type === 'error';
+  });
+  const list = document.getElementById('noteList');
+  document.getElementById('noteSubject').style.display = currentNoteTab === 1 ? 'none' : '';
+
+  if (notes.length === 0) {
+    list.innerHTML = '<div class="empty-tip">'+(currentNoteTab===1?'暂无错题记录':'暂无复习笔记')+'</div>';
+    return;
+  }
+
+  list.innerHTML = notes.slice(0, 50).map(n => {
+    const cls = n.subject==='fin'?'fin':n.subject==='eco'?'eco':'';
+    return '<div class="note-card '+cls+'"><div class="note-head"><div>' +
+      '<span class="note-subj">'+SUBJECTS[n.subject].name+'</span>' +
+      (n.title ? ' · '+n.title : '') + '</div>' +
+      '<div><span class="note-date">'+n.date+'</span><span class="note-del" onclick="delNote(\''+n.id+'\')">✕</span></div></div>' +
+      '<div class="note-content">'+(n.content||'').replace(/\n/g,'<br>')+'</div></div>';
+  }).join('');
+}
+
+function switchNoteTab(idx) {
+  currentNoteTab = idx;
+  document.querySelectorAll('.note-tab').forEach((el,i) => {
+    el.classList.toggle('active', i===idx);
+  });
+  renderNotes();
+}
+
+function addNote() {
+  const title = document.getElementById('noteTitle').value.trim();
+  const subject = document.getElementById('noteSubject').value;
+  const content = document.getElementById('noteContent').value.trim();
+  if (!content) return;
+  const data = getData();
+  if (!data.notes) data.notes = [];
+  data.notes.unshift({
+    id: Date.now().toString(),
+    type: currentNoteTab === 1 ? 'error' : 'note',
+    title, subject, content,
+    date: new Date().toLocaleDateString('zh-CN')
+  });
+  if (data.notes.length > 200) data.notes = data.notes.slice(0, 200);
+  saveData(data);
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteContent').value = '';
+  renderNotes();
+}
+
+function delNote(id) {
+  const data = getData();
+  if (data.notes) {
+    data.notes = data.notes.filter(n => n.id !== id);
+    saveData(data);
+    renderNotes();
+  }
+}
+
+function renderStats() {
+  const data = getData();
+  const checkins = data.checkins || {};
+  const dates = Object.keys(checkins).filter(k => checkins[k] && checkins[k].length > 0).sort();
+  const total = dates.length;
+
+  // 连续打卡
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const ds = d.toISOString().slice(0,10);
+    if (d.getDay() === 0) continue;
+    if (checkins[ds] && checkins[ds].length > 0) streak++;
+    else if (i > 0) break;
+  }
+
+  // 本月
+  const monthKey = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0');
+  const monthCount = dates.filter(d => d.startsWith(monthKey)).length;
+  const now = today.getDate();
+  const studyDays = Array.from({length:now}, (_, i) => new Date(today.getFullYear(), today.getMonth(), i+1))
+    .filter(d => d.getDay() !== 0 && d <= today).length;
+  const rate = studyDays > 0 ? Math.round(monthCount / studyDays * 100) : 0;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statStreak').textContent = streak;
+  document.getElementById('statMonth').textContent = monthCount;
+  document.getElementById('statRate').textContent = rate + '%';
+}
+
+function renderTips() {
+  const tips = [
+    '💡 <strong>集中2小时</strong>用来听课/刷题，<strong>零散时间</strong>做经济法记忆和错题回顾',
+    '💡 财管去年59分说明基础在，<strong>重点攻克计算题</strong>，做公式手写本',
+    '💡 经济法有基础直接刷题，多选题陷阱多，法条提炼为<strong>关键词记忆卡</strong>',
+    '💡 每天开始前花10分钟<strong>回顾昨日错题</strong>，睡前15分钟<strong>速记法条</strong>',
+    '💡 8月起每周至少做1套<strong>全真模拟卷</strong>，控制答题时间',
   ];
-  const hit = alerts.find(a => a.date === today);
-  if (!hit) return;
-  document.getElementById('remindContent').innerHTML = `<p>${hit.msg}</p>`;
-  document.getElementById('remindModal').classList.add('show');
+  const today = new Date();
+  document.getElementById('tipBox').innerHTML = tips[today.getDate() % tips.length];
 }
 
-// ══════════════════════════════════
-//  NAV + TOAST
-// ══════════════════════════════════
-function switchPage(id) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  const idx = ['home','calendar','notes','stats'].indexOf(id);
-  document.querySelectorAll('.nav-item')[idx].classList.add('active');
-  if (id==='calendar') { renderCalendar(); renderMilestones(); }
-  if (id==='notes') { renderNotes('err'); renderNotes('memo'); }
-  if (id==='stats') renderStats();
+function renderReminders() {
+  const now = new Date();
+  const items = [];
+  if (REG_START - now > 0) items.push('📅 报名开始: 6月12日（还有'+Math.ceil((REG_START-now)/86400000)+'天）');
+  else if (REG_END - now > 0) items.push('🔴 报名中！截止7月2日');
+  items.push('🎯 考试: 9月5-6日（还有'+Math.max(0,Math.ceil((EXAM_DATE-now)/86400000))+'天）');
+  document.getElementById('reminders').innerHTML = items.map(t => '<div style="padding:8px 0;font-size:14px;border-bottom:1px solid #f0f0f0">'+t+'</div>').join('');
 }
 
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=>t.classList.remove('show'), 2500);
+// ══════════════════════════════════════════════════════════
+// 页面切换
+// ══════════════════════════════════════════════════════════
+function switchPage(idx) {
+  document.querySelectorAll('.page').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.nav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
 }
 
-// ══════════════════════════════════
-//  INIT
-// ══════════════════════════════════
-(async function main() {
-  const cloudOk = await initCloudBase();
-
-  updateCountdown();
-  renderToday();
-  renderProgress();
-  checkReminders();
-
-  // Hide loading
-  document.getElementById('loadingOverlay').classList.add('hide');
-  setTimeout(() => {
-    document.getElementById('loadingOverlay').style.display = 'none';
-  }, 500);
-})();
+// 启动
+init();
 </script>
 </body>
 </html>
